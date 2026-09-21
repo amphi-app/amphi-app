@@ -1,10 +1,13 @@
 /*
   ZEUS Schedule Viewer — app.js
 
-  This file does three jobs, in order:
+  This file does four jobs, in order:
     1. Parse a .ics file's text into a plain JavaScript array of event objects.
-    2. Classify each event (Lecture / Tutorial / Lab / Exam) from its French title.
-    3. Render those events as English, color-coded cards grouped by day.
+       (A real ZEUS export covers the WHOLE school, not just one student.)
+    2. Let the student pick which courses are theirs from that full list,
+       remembering the choice in the browser for next time.
+    3. Classify each event (course color, or Exam) from its French title.
+    4. Render the selected events as English, color-coded cards grouped by day.
 
   There is no build step. The browser reads this file directly.
 */
@@ -167,14 +170,17 @@ function parseICS(text) {
 
     const { name, value } = parseICSLine(line);
     switch (name) {
+      // .trim() because some real ZEUS entries have a stray leading space
+      // ("SUMMARY: Anglais général 1"), which would otherwise make the same
+      // course look like two different ones in the picker below.
       case "SUMMARY":
-        current.summary = unescapeICSText(value);
+        current.summary = unescapeICSText(value).trim();
         break;
       case "LOCATION":
-        current.location = unescapeICSText(value);
+        current.location = unescapeICSText(value).trim();
         break;
       case "DESCRIPTION":
-        current.description = unescapeICSText(value);
+        current.description = unescapeICSText(value).trim();
         break;
       case "DTSTART":
         current.start = parseICSDate(value);
@@ -305,12 +311,103 @@ function showError(message) {
   errorEl.hidden = !message;
 }
 
-// A single student's semester is unlikely to have more than a couple hundred
-// events. A much bigger number almost certainly means this export wasn't
-// filtered to one person (a real ZEUS export we inspected had 11,000+
-// events covering the whole school) — worth telling the user rather than
-// silently rendering thousands of cards that aren't theirs.
-const LIKELY_UNFILTERED_THRESHOLD = 300;
+// ---------------------------------------------------------------------------
+// STEP 2 (continued): Course picker — a real ZEUS export covers every
+// course in the school, so the student has to tell us which ones are theirs.
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = "zeus-schedule-selected-courses";
+
+// localStorage can throw (private browsing, disabled site data, etc.), and
+// this is a convenience feature, not something the app depends on — so any
+// failure here should just mean "don't remember," not a broken page.
+function loadSavedSelection() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSelection(selectedSet) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...selectedSet]));
+  } catch {
+    // Ignore — the app still works for this session, it just won't remember.
+  }
+}
+
+let allEvents = [];
+
+/** Every distinct course name in the file, alphabetically, with how many
+ *  timetable entries each one has. */
+function getUniqueCourses(events) {
+  const counts = new Map();
+  for (const event of events) {
+    const name = event.summary || "Untitled";
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderCoursePicker(courses, selected) {
+  const picker = document.getElementById("course-picker");
+  const list = document.getElementById("course-list");
+  list.innerHTML = "";
+
+  for (const course of courses) {
+    const row = document.createElement("label");
+    row.className = "course-row";
+    row.dataset.name = course.name.toLowerCase();
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = course.name;
+    checkbox.checked = selected.has(course.name);
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "course-name";
+    nameSpan.textContent = course.name;
+
+    const countSpan = document.createElement("span");
+    countSpan.className = "course-count";
+    countSpan.textContent = course.count;
+
+    row.append(checkbox, nameSpan, countSpan);
+    list.appendChild(row);
+  }
+
+  picker.hidden = false;
+}
+
+function getCheckedCourseNames() {
+  const boxes = document.querySelectorAll("#course-list input[type=checkbox]:checked");
+  return new Set([...boxes].map((box) => box.value));
+}
+
+function showFilteredSchedule() {
+  const selected = getCheckedCourseNames();
+  saveSelection(selected);
+
+  const filtered = allEvents.filter((event) => selected.has(event.summary));
+
+  document.getElementById("course-picker").hidden = true;
+  document.getElementById("schedule-header").hidden = false;
+
+  if (filtered.length === 0) {
+    showError("No courses selected — pick at least one from the list.");
+    document.getElementById("legend").hidden = true;
+    document.getElementById("schedule").innerHTML = "";
+    return;
+  }
+
+  showError("");
+  renderLegend(filtered);
+  renderSchedule(filtered);
+}
 
 function loadScheduleFromText(text) {
   try {
@@ -319,17 +416,23 @@ function loadScheduleFromText(text) {
       showError("That file didn't contain any recognizable events.");
       return;
     }
-    if (events.length > LIKELY_UNFILTERED_THRESHOLD) {
-      showError(
-        `This file has ${events.length} events — that's far more than one student's schedule. ` +
-        `It's likely the whole school's calendar rather than just yours. Showing it anyway, but ` +
-        `see the README for why this happens and what to do about it.`
-      );
+    showError("");
+    allEvents = events;
+
+    const courses = getUniqueCourses(events);
+    const saved = loadSavedSelection();
+    renderCoursePicker(courses, saved);
+
+    // If we already know their courses from last time, skip straight to
+    // the schedule — but only for names that still exist in this file.
+    const stillValid = [...saved].filter((name) => courses.some((c) => c.name === name));
+    if (stillValid.length > 0) {
+      showFilteredSchedule();
     } else {
-      showError("");
+      document.getElementById("schedule-header").hidden = true;
+      document.getElementById("legend").hidden = true;
+      document.getElementById("schedule").innerHTML = "";
     }
-    renderLegend(events);
-    renderSchedule(events);
   } catch (err) {
     showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
     console.error(err);
@@ -354,4 +457,19 @@ document.getElementById("ics-input").addEventListener("change", (event) => {
 
 document.getElementById("load-sample-btn").addEventListener("click", () => {
   loadScheduleFromText(SAMPLE_ICS);
+});
+
+document.getElementById("course-search").addEventListener("input", (event) => {
+  const query = event.target.value.toLowerCase();
+  for (const row of document.querySelectorAll(".course-row")) {
+    row.style.display = row.dataset.name.includes(query) ? "" : "none";
+  }
+});
+
+document.getElementById("show-schedule-btn").addEventListener("click", showFilteredSchedule);
+
+document.getElementById("edit-courses-btn").addEventListener("click", () => {
+  const selected = getCheckedCourseNames();
+  renderCoursePicker(getUniqueCourses(allEvents), selected);
+  document.getElementById("schedule-header").hidden = true;
 });

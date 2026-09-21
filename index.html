@@ -23,6 +23,20 @@
       <p id="error-message" class="error" hidden></p>
     </section>
 
+    <section id="course-picker" hidden>
+      <p class="picker-intro">
+        This file covers the whole school. Pick the courses you're actually
+        enrolled in — your selection is remembered for next time.
+      </p>
+      <input type="text" id="course-search" placeholder="Search courses…" />
+      <div id="course-list"></div>
+      <button id="show-schedule-btn" type="button">Show my schedule</button>
+    </section>
+
+    <section id="schedule-header" hidden>
+      <button id="edit-courses-btn" type="button">← Edit my courses</button>
+    </section>
+
     <section id="legend" hidden>
       <!-- Filled in by app.js once we know which class types are in the file -->
     </section>
