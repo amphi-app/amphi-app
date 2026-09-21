@@ -12,17 +12,31 @@
 // ---------------------------------------------------------------------------
 // STEP 0: Configuration
 // ---------------------------------------------------------------------------
-// These patterns are a best guess at how ZEUS labels class types in the
-// SUMMARY field (e.g. "CM - Algorithmique"). Once we have a real exported
-// .ics file from ZEUS, check it against this list and adjust the patterns —
-// this is the one place you'll likely need to edit after testing with real data.
-const CLASS_TYPES = [
-  { match: /\bCM\b/i, label: "Lecture", color: "var(--color-lecture)" },
-  { match: /\bTD\b/i, label: "Tutorial", color: "var(--color-tutorial)" },
-  { match: /\bTP\b/i, label: "Lab", color: "var(--color-lab)" },
-  { match: /\b(examen|contr[oô]le|partiel|ds)\b/i, label: "Exam", color: "var(--color-exam)" },
+// Confirmed against a real ZEUS export: course titles (SUMMARY) almost never
+// carry a CM/TD/TP prefix, so we can't color-code by class type. Instead,
+// each distinct course name gets a stable color (same course = same color
+// every time, via a hash), and exam-sounding titles get a red highlight
+// on top of that, since that pattern *does* show up reliably in real data.
+const EXAM_PATTERN = /\b(examen|partiel|contr[oô]le)\b/i;
+
+const PALETTE = [
+  "#4f7cff", "#2fb380", "#e0a300", "#a855f7", "#ef6ea8",
+  "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4",
 ];
-const DEFAULT_TYPE = { label: "Class", color: "var(--color-default)" };
+
+/** Simple deterministic string hash so the same course name always maps to
+ *  the same palette color, without having to track a name->color table. */
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function colorForCourse(summary) {
+  return PALETTE[hashString(summary) % PALETTE.length];
+}
 
 // A small embedded sample so you can see the app work without needing a
 // real ZEUS export yet. Real files will look the same shape as this.
@@ -30,32 +44,32 @@ const SAMPLE_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Sample//EN
 BEGIN:VEVENT
-SUMMARY:CM - Algorithmique
+SUMMARY:Algorithmique
 DTSTART:20260922T083000
 DTEND:20260922T103000
 LOCATION:Amphi B
-DESCRIPTION:Prof. Martin Dubois
+DESCRIPTION:
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:TD - Bases de donnees
+SUMMARY:Bases de donnees GR A1
 DTSTART:20260922T110000
 DTEND:20260922T130000
 LOCATION:Salle 214
-DESCRIPTION:Prof. Alice Nguyen
+DESCRIPTION:
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:TP - Programmation systeme
+SUMMARY:Programmation systeme GR A1
 DTSTART:20260923T140000
 DTEND:20260923T170000
 LOCATION:Salle Info 3
-DESCRIPTION:Prof. Karim Haddad
+DESCRIPTION:Salle sous reserve de changement
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:Examen - Mathematiques
+SUMMARY:Examen Mathematiques
 DTSTART:20260925T090000
 DTEND:20260925T110000
 LOCATION:Amphi A
-DESCRIPTION:Surveillant: Prof. Sophie Laurent
+DESCRIPTION:2H EXAMEN
 END:VEVENT
 END:VCALENDAR
 `;
@@ -116,6 +130,18 @@ function parseICSDate(value) {
     : new Date(year, month, day, hour, minute, second);
 }
 
+// ZEUS's own data has at least one bogus placeholder date (year 3036, seen
+// on a "date to be rescheduled" event). Anything wildly outside a normal
+// school-year window is a data bug, not a real class, so we drop it rather
+// than show "your class in March 3036."
+const MIN_YEAR = new Date().getFullYear() - 1;
+const MAX_YEAR = new Date().getFullYear() + 3;
+
+function isPlausibleDate(date) {
+  const year = date.getFullYear();
+  return year >= MIN_YEAR && year <= MAX_YEAR;
+}
+
 /**
  * Parses the full text of a .ics file into an array of:
  *   { summary, location, description, start: Date, end: Date }
@@ -131,7 +157,9 @@ function parseICS(text) {
       continue;
     }
     if (line === "END:VEVENT") {
-      if (current && current.start) events.push(current);
+      if (current && current.start && isPlausibleDate(current.start)) {
+        events.push(current);
+      }
       current = null;
       continue;
     }
@@ -161,14 +189,14 @@ function parseICS(text) {
 }
 
 // ---------------------------------------------------------------------------
-// STEP 2: Classify each event by type
+// STEP 2: Decide how to color/badge each event
 // ---------------------------------------------------------------------------
 
 function classify(summary = "") {
-  for (const type of CLASS_TYPES) {
-    if (type.match.test(summary)) return type;
+  if (EXAM_PATTERN.test(summary)) {
+    return { isExam: true, color: "var(--color-exam)" };
   }
-  return DEFAULT_TYPE;
+  return { isExam: false, color: colorForCourse(summary) };
 }
 
 // ---------------------------------------------------------------------------
@@ -195,22 +223,31 @@ function groupByDay(events) {
   return sortedKeys.map((key) => ({ key, events: groups.get(key) }));
 }
 
+// Event text (SUMMARY/LOCATION/DESCRIPTION) is free-form text written by
+// school staff, not something we control — escape it before it goes into
+// innerHTML so it can never be interpreted as markup.
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function renderLegend(events) {
   const legend = document.getElementById("legend");
-  const typesUsed = new Map();
-  for (const event of events) {
-    const type = classify(event.summary);
-    typesUsed.set(type.label, type.color);
-  }
+  const hasExam = events.some((event) => classify(event.summary).isExam);
 
   legend.innerHTML = "";
-  for (const [label, color] of typesUsed) {
+  if (hasExam) {
     const item = document.createElement("div");
     item.className = "legend-item";
-    item.innerHTML = `<span class="legend-swatch" style="background:${color}"></span>${label}`;
+    item.innerHTML = `<span class="legend-swatch" style="background:var(--color-exam)"></span>Exam`;
     legend.appendChild(item);
   }
-  legend.hidden = typesUsed.size === 0;
+  const note = document.createElement("div");
+  note.className = "legend-item";
+  note.textContent = "Every other course gets its own consistent color.";
+  legend.appendChild(note);
+  legend.hidden = false;
 }
 
 function renderSchedule(events) {
@@ -239,16 +276,19 @@ function renderSchedule(events) {
       card.style.borderLeftColor = type.color;
 
       const timeRange = `${timeFormatter.format(event.start)} – ${timeFormatter.format(event.end)}`;
+      const title = escapeHTML(event.summary || "Untitled class");
+      const location = event.location ? escapeHTML(event.location) : "";
+      const note = event.description ? escapeHTML(event.description) : "";
 
       card.innerHTML = `
         <div class="event-top-row">
           <span class="event-time">${timeRange}</span>
-          <span class="event-type-badge" style="background:${type.color}">${type.label}</span>
+          ${type.isExam ? `<span class="event-type-badge" style="background:${type.color}">Exam</span>` : ""}
         </div>
-        <div class="event-title">${event.summary || "Untitled class"}</div>
+        <div class="event-title">${title}</div>
         <div class="event-meta">
-          ${event.location ? `📍 ${event.location}` : ""}
-          ${event.description ? `&nbsp;·&nbsp;${event.description}` : ""}
+          ${location ? `📍 ${location}` : ""}
+          ${note ? `&nbsp;·&nbsp;${note}` : ""}
         </div>
       `;
 
@@ -265,6 +305,13 @@ function showError(message) {
   errorEl.hidden = !message;
 }
 
+// A single student's semester is unlikely to have more than a couple hundred
+// events. A much bigger number almost certainly means this export wasn't
+// filtered to one person (a real ZEUS export we inspected had 11,000+
+// events covering the whole school) — worth telling the user rather than
+// silently rendering thousands of cards that aren't theirs.
+const LIKELY_UNFILTERED_THRESHOLD = 300;
+
 function loadScheduleFromText(text) {
   try {
     const events = parseICS(text);
@@ -272,7 +319,15 @@ function loadScheduleFromText(text) {
       showError("That file didn't contain any recognizable events.");
       return;
     }
-    showError("");
+    if (events.length > LIKELY_UNFILTERED_THRESHOLD) {
+      showError(
+        `This file has ${events.length} events — that's far more than one student's schedule. ` +
+        `It's likely the whole school's calendar rather than just yours. Showing it anyway, but ` +
+        `see the README for why this happens and what to do about it.`
+      );
+    } else {
+      showError("");
+    }
     renderLegend(events);
     renderSchedule(events);
   } catch (err) {

@@ -36,23 +36,48 @@ fake data before you have a real export.
 5. **`classify`** — looks at the event's French title (e.g. `"CM - Algorithmique"`) and matches it against patterns in `CLASS_TYPES` to decide if it's a Lecture, Tutorial, Lab, or Exam, and which color to use.
 6. **`groupByDay`** / **`renderSchedule`** — sorts everything chronologically and builds the actual HTML cards you see on the page.
 
-## Known limitation — please send a real sample
+## What we learned from a real ZEUS export (no longer guessing)
 
-**I have never seen an actual ZEUS `.ics` export**, only guessed at its shape
-from how these academic scheduling systems typically work. The `CLASS_TYPES`
-patterns in `app.js` (matching `CM`, `TD`, `TP`, `Examen`) and the assumption
-that professor names live in `DESCRIPTION` are both guesses. Once you export
-a real file, share it (redact your name/student ID if you want) so the
-patterns can be corrected against real data.
+A real `.ics` file was inspected directly (11,519 events, 917 distinct
+course/group names, spanning 2026–2029). Three things changed based on that:
+
+1. **There is no professor-name field.** No `ORGANIZER`, no `ATTENDEE`, and
+   `DESCRIPTION` is empty on almost every event — where it has content, it's
+   logistics notes ("A REPLANIFIER", "2H EXAMEN"), never a name. This feature
+   is cut from the spec until we find another data source for it, because
+   the ICS export cannot supply it.
+2. **Course titles rarely say CM/TD/TP.** Only ~3% of course names carry a
+   type marker. Color coding is now per-course (a stable color derived from
+   the course name itself) instead of per-type, with a separate red "Exam"
+   highlight layered on top since exam-sounding titles (`EXAMEN`, `PARTIEL`,
+   `CONTROLE`) do show up reliably (~3% of names, but consistent).
+3. **The export we tested was not scoped to one student.** It contained the
+   entire school's calendar across every course and cohort, not just one
+   group's classes. If your real export looks the same, "enter your group
+   code" can't work as a single filter — the group labels are per-course
+   (`GR A1`, `ACF GR B1`, ...), not one code spanning your whole schedule.
+   **This is unresolved** and blocks the auto-filter feature until we know:
+   does *your own* ZEUS login produce a smaller, already-filtered file, or
+   does everyone get this same full dump? The app currently shows a warning
+   banner (and still renders everything) when a loaded file has more than
+   300 events, since that's a strong signal it isn't one person's schedule.
+
+Also fixed while looking at real data: one event had a placeholder date of
+year 3036 (a ZEUS data bug, not a real class) — now filtered out — and event
+text is now HTML-escaped before rendering, since it's free-form text written
+by school staff and shouldn't be trusted as safe markup.
 
 ## Roadmap
 
-- **V1 (this)** — manual upload, English display, color coding. Done.
-- **V1.1** — weekly grid view as an alternative to the day-list view.
+- **V1 (this)** — manual upload, English display, per-course color coding,
+  exam highlighting. Done.
+- **V1.1** — resolve the group-filtering question above, then build
+  whatever it implies: either a simple "already filtered, just display it"
+  path, or a search/filter UI over the full export.
+- **V1.2** — weekly grid view as an alternative to the day-list view.
 - **V2** — investigate whether ZEUS exposes a public per-group `.ics` URL
-  (common in French school scheduling systems) that would let us skip the
-  manual download step. This requires checking ZEUS's network requests while
-  logged in — it cannot be assumed safe or possible without that check.
+  that would let us skip the manual download step. Requires checking ZEUS's
+  network requests while logged in — not assumed safe or possible yet.
 - **V3** — one-click Google Calendar export via Google's Calendar API
-  (requires OAuth setup, a Google Cloud project, and is a meaningfully bigger
-  task than everything above combined — budget real time for it separately).
+  (OAuth + a Google Cloud project — a meaningfully bigger task than
+  everything above combined; budget real time for it separately).
