@@ -340,6 +340,69 @@ function saveSelection(selectedSet) {
 
 let allEvents = [];
 
+// ---------------------------------------------------------------------------
+// Loading a schedule from a URL instead of a file
+// ---------------------------------------------------------------------------
+// ZEUS's "Générer un ICS" link (https://zeus.ionis-it.com/api/group/.../ics/...)
+// turned out to work with no login at all — the token in the URL is enough.
+// If the ZEUS server also allows cross-origin browser requests (CORS) to that
+// endpoint, we can fetch it directly and never ask for a manual upload again.
+// If it doesn't allow that, fetch() fails and we fall back to the file input.
+
+const URL_STORAGE_KEY = "zeus-schedule-ics-url";
+
+function loadSavedUrl() {
+  try {
+    return localStorage.getItem(URL_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveUrl(url) {
+  try {
+    localStorage.setItem(URL_STORAGE_KEY, url);
+  } catch {
+    // Ignore — the app still works for this session, it just won't remember.
+  }
+}
+
+function forgetSavedUrl() {
+  try {
+    localStorage.removeItem(URL_STORAGE_KEY);
+  } catch {
+    // Nothing to do if storage isn't available.
+  }
+}
+
+async function loadFromURL(url, { isAutoLoad = false } = {}) {
+  showError("");
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      showError(`ZEUS responded with an error (HTTP ${response.status}). The link may have expired.`);
+      return;
+    }
+    const text = await response.text();
+    saveUrl(url);
+    document.getElementById("saved-url-note").hidden = false;
+    loadScheduleFromText(text);
+  } catch (err) {
+    console.error(err);
+    if (isAutoLoad) {
+      // Fail quietly on auto-load — the file upload is still right there.
+      forgetSavedUrl();
+      document.getElementById("saved-url-note").hidden = true;
+      return;
+    }
+    showError(
+      "Couldn't load that link directly — ZEUS's server may not allow this app to fetch it " +
+      "from the browser (a security setting called CORS). Download the file from that link " +
+      "instead and upload it below."
+    );
+  }
+}
+
 /** Every distinct course name in the file, alphabetically, with how many
  *  timetable entries each one has. */
 function getUniqueCourses(events) {
@@ -473,3 +536,27 @@ document.getElementById("edit-courses-btn").addEventListener("click", () => {
   renderCoursePicker(getUniqueCourses(allEvents), selected);
   document.getElementById("schedule-header").hidden = true;
 });
+
+document.getElementById("load-url-btn").addEventListener("click", () => {
+  const url = document.getElementById("ics-url-input").value.trim();
+  if (url) loadFromURL(url);
+});
+
+document.getElementById("ics-url-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") document.getElementById("load-url-btn").click();
+});
+
+document.getElementById("forget-url-btn").addEventListener("click", () => {
+  forgetSavedUrl();
+  document.getElementById("saved-url-note").hidden = true;
+  document.getElementById("ics-url-input").value = "";
+});
+
+// On page load, if we have a saved link from a previous visit, use it
+// automatically — this is what gets us from "six ZEUS clicks" to zero.
+const savedUrl = loadSavedUrl();
+if (savedUrl) {
+  document.getElementById("ics-url-input").value = savedUrl;
+  document.getElementById("saved-url-note").hidden = false;
+  loadFromURL(savedUrl, { isAutoLoad: true });
+}

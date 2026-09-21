@@ -19,14 +19,30 @@ fake data before you have a real export.
 2. In the left sidebar, open **Groupes**, and check the box next to **EPITA**
    (the top-level box — don't drill into the sub-tree, that's what this app
    does for you now).
-3. Click **"Générer un ICS"** and save the file.
-4. On this page, click the upload box and select that file.
+3. Click **"Générer un ICS"**. This gives you a link like
+   `https://zeus.ionis-it.com/api/group/1/ics/XXXXXXXXXX` — confirmed to work
+   with no login required, just that link. **Copy the link** (don't just
+   download the file).
+4. On this page, paste that link into the **"…or paste your ZEUS calendar
+   link"** box and click **Load**. If ZEUS's server allows this app to fetch
+   it directly, it loads immediately and is remembered — next time you open
+   the page, it loads automatically, no clicks at all.
+   - If that fails, it's because ZEUS's server blocks direct browser fetches
+     from other sites (a security setting called CORS) — download the file
+     from that same link instead and use the upload box below it. Same
+     result, just needs a fresh download when your schedule changes instead
+     of refreshing automatically.
 5. The first time, you'll see a searchable list of every course in the
    school — search for your courses (e.g. by course name or your group code
    like "A1") and check the ones that are yours, then **"Show my schedule."**
    Your picks are remembered in the browser, so next time you load a file
    it skips straight to your schedule. Use **"← Edit my courses"** any time
    to change your picks.
+
+**Treat that link like a password.** The token at the end of it is enough
+by itself to read your schedule, no login required — don't post it publicly
+(a public repo, a public chat, etc.). It's stored only in your own browser's
+`localStorage`, never sent anywhere except directly to ZEUS.
 
 ## Project structure
 
@@ -75,14 +91,39 @@ settled several things that were originally just assumptions:
 - ZEUS's own data has at least one bogus placeholder date (year 3036, on a
   "reschedule pending" event) — filtered out in `parseICS`.
 
+## The ZEUS link: what's confirmed, what isn't yet
+
+`https://zeus.ionis-it.com/api/group/{id}/ics/{token}` was tested directly:
+opening it in a private browser window (no login) downloaded the calendar
+successfully — the token alone is a working credential, no session needed.
+That's what makes the "paste your link" flow above possible at all.
+
+**Still open:** whether ZEUS's server sends the `Access-Control-Allow-Origin`
+header needed for a webpage's own JavaScript to `fetch()` that URL directly.
+This sandbox's network is locked down to a small allowlist and can't reach
+`zeus.ionis-it.com` to check — it has to be tested from a real browser
+(which is exactly what happens the first time you use the "paste your link"
+box above). The app is built to handle either outcome cleanly: if fetch
+works, everything after the first paste is automatic; if it doesn't, you'll
+get a clear error telling you to fall back to downloading + uploading, no
+broken page either way. Both paths were tested locally (a fake endpoint with
+and without the CORS header) before this shipped.
+
+If it does turn out to allow cross-origin fetches, the same link should also
+work directly in **Google Calendar → Other calendars → From URL** — a native
+one-click subscription with no code and no OAuth, which would mean V3 is
+already solved by the link itself, not something to build.
+
 ## Roadmap
 
-- **V1 (this)** — manual upload, course picker with search + persistence,
-  English display, per-course color coding, exam highlighting. Done.
+- **V1 (this)** — load-by-link with auto-refresh (falls back to manual
+  upload if the browser blocks it), course picker with search +
+  persistence, English display, per-course color coding, exam
+  highlighting. Done.
 - **V1.1** — weekly grid view as an alternative to the day-list view.
-- **V2** — investigate whether ZEUS exposes a public per-group `.ics` URL
-  that would let us skip the manual download step. Requires checking ZEUS's
-  network requests while logged in — not assumed safe or possible yet.
-- **V3** — one-click Google Calendar export via Google's Calendar API
-  (OAuth + a Google Cloud project — a meaningfully bigger task than
-  everything above combined; budget real time for it separately).
+- **V2** — confirmed unnecessary if the CORS check above comes back
+  positive (no separate backend/proxy needed to auto-fetch). If it comes
+  back negative, revisit whether a small proxy is worth building just to
+  remove the manual-download step.
+- **V3** — try subscribing to the ZEUS link directly from Google Calendar's
+  own "From URL" import first (see above) before building anything custom.
