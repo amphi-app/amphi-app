@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZEUS Schedule Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111214" />
+  <title>ZEUS Timetable</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <header>
-    <h1>ZEUS Schedule Viewer</h1>
-    <p class="subtitle">Your EPITA timetable, in English, without the six clicks.</p>
-  </header>
-
   <main>
-    <section id="upload-section">
+    <p id="error-message" class="error" hidden></p>
+
+    <section id="upload-section" class="panel">
+      <h1>ZEUS Timetable</h1>
+      <p class="subtitle">Your EPITA schedule, in English, without the six clicks.</p>
+
       <label class="file-drop" for="ics-input">
         <span id="file-drop-label">Choose your .ics file (from ZEUS → "Générer un ICS")</span>
         <input type="file" id="ics-input" accept=".ics" />
@@ -28,30 +29,40 @@
         Loaded from your saved link. <button id="forget-url-btn" type="button" class="link-btn">Forget it</button>
       </p>
 
-      <button id="load-sample-btn" type="button">Or try it with a sample schedule</button>
-      <p id="error-message" class="error" hidden></p>
+      <button id="load-sample-btn" type="button" class="link-btn">Or try it with a sample schedule</button>
     </section>
 
-    <section id="course-picker" hidden>
+    <section id="course-picker" class="panel" hidden>
       <p class="picker-intro">
         This file covers the whole school. Pick the courses you're actually
         enrolled in — your selection is remembered for next time.
       </p>
       <input type="text" id="course-search" placeholder="Search courses…" />
       <div id="course-list"></div>
-      <button id="show-schedule-btn" type="button">Show my schedule</button>
+      <button id="show-schedule-btn" type="button" class="primary-btn">Show my schedule</button>
     </section>
 
-    <section id="schedule-header" hidden>
-      <button id="edit-courses-btn" type="button">← Edit my courses</button>
-    </section>
+    <section id="week-view" hidden>
+      <div class="toolbar">
+        <button id="edit-courses-btn" type="button" class="link-btn">Edit courses</button>
+        <button id="change-source-btn" type="button" class="link-btn">Change source</button>
+      </div>
 
-    <section id="legend" hidden>
-      <!-- Filled in by app.js once we know which class types are in the file -->
-    </section>
+      <header class="day-header">
+        <h2 id="day-title"></h2>
+        <p id="day-subtitle"></p>
+      </header>
 
-    <section id="schedule">
-      <!-- Filled in by app.js -->
+      <div class="week-nav">
+        <button id="prev-week-btn" type="button" class="icon-btn" aria-label="Previous week">‹</button>
+        <span id="week-label"></span>
+        <button id="next-week-btn" type="button" class="icon-btn" aria-label="Next week">›</button>
+        <button id="today-btn" type="button" class="pill-btn">Today</button>
+      </div>
+
+      <nav id="day-tabs" aria-label="Days of the week"></nav>
+
+      <div id="schedule"></div>
     </section>
   </main>
 

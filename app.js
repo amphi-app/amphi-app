@@ -7,7 +7,7 @@
     2. Let the student pick which courses are theirs from that full list,
        remembering the choice in the browser for next time.
     3. Classify each event (course color, or Exam) from its French title.
-    4. Render the selected events as English, color-coded cards grouped by day.
+    4. Render the selected events as an app-style week view, in Paris time.
 
   There is no build step. The browser reads this file directly.
 */
@@ -22,9 +22,11 @@
 // on top of that, since that pattern *does* show up reliably in real data.
 const EXAM_PATTERN = /\b(examen|partiel|contr[oô]le)\b/i;
 
+// Cards are filled with these colors and carry white text, so every color
+// here is dark enough to keep that text readable.
 const PALETTE = [
-  "#4f7cff", "#2fb380", "#e0a300", "#a855f7", "#ef6ea8",
-  "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4",
+  "#2f7d4f", "#4f46e5", "#b45309", "#7c3aed", "#be185d",
+  "#0f766e", "#c2410c", "#1d4ed8", "#4d7c0f", "#0e7490",
 ];
 
 /** Simple deterministic string hash so the same course name always maps to
@@ -42,35 +44,36 @@ function colorForCourse(summary) {
 }
 
 // A small embedded sample so you can see the app work without needing a
-// real ZEUS export yet. Real files will look the same shape as this.
+// real ZEUS export yet. Times end in "Z" (UTC), exactly like real ZEUS
+// exports do — 06:30Z is 08:30 in Paris during summer time.
 const SAMPLE_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Sample//EN
 BEGIN:VEVENT
 SUMMARY:Algorithmique
-DTSTART:20260922T083000
-DTEND:20260922T103000
+DTSTART:20260922T063000Z
+DTEND:20260922T083000Z
 LOCATION:Amphi B
 DESCRIPTION:
 END:VEVENT
 BEGIN:VEVENT
 SUMMARY:Bases de donnees GR A1
-DTSTART:20260922T110000
-DTEND:20260922T130000
+DTSTART:20260922T090000Z
+DTEND:20260922T110000Z
 LOCATION:Salle 214
 DESCRIPTION:
 END:VEVENT
 BEGIN:VEVENT
 SUMMARY:Programmation systeme GR A1
-DTSTART:20260923T140000
-DTEND:20260923T170000
+DTSTART:20260923T120000Z
+DTEND:20260923T150000Z
 LOCATION:Salle Info 3
 DESCRIPTION:Salle sous reserve de changement
 END:VEVENT
 BEGIN:VEVENT
 SUMMARY:Examen Mathematiques
-DTSTART:20260925T090000
-DTEND:20260925T110000
+DTSTART:20260925T070000Z
+DTEND:20260925T090000Z
 LOCATION:Amphi A
 DESCRIPTION:2H EXAMEN
 END:VEVENT
@@ -161,6 +164,7 @@ function parseICS(text) {
     }
     if (line === "END:VEVENT") {
       if (current && current.start && isPlausibleDate(current.start)) {
+        current.end = current.end || current.start; // DTEND is optional in the ICS spec
         events.push(current);
       }
       current = null;
@@ -205,29 +209,68 @@ function classify(summary = "") {
   return { isExam: false, color: colorForCourse(summary) };
 }
 
-// ---------------------------------------------------------------------------
-// STEP 3: Render events into the page
-// ---------------------------------------------------------------------------
+// ZEUS course titles often end in a group label like "GR A1" or "GPE B1".
+const GROUP_PATTERN = /\b(?:GR|GPE)\s*([A-Z]\d?)\b/i;
 
-const timeFormatter = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
-const dayFormatter = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" });
-
-function groupByDay(events) {
-  const groups = new Map();
-  for (const event of events) {
-    const key = event.start.toDateString();
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(event);
-  }
-  // Sort days chronologically, and events within each day chronologically.
-  const sortedKeys = [...groups.keys()].sort(
-    (a, b) => new Date(a) - new Date(b)
-  );
-  for (const key of sortedKeys) {
-    groups.get(key).sort((a, b) => a.start - b.start);
-  }
-  return sortedKeys.map((key) => ({ key, events: groups.get(key) }));
+function extractGroup(summary = "") {
+  const match = summary.match(GROUP_PATTERN);
+  return match ? `Group ${match[1].toUpperCase()}` : "";
 }
+
+// ---------------------------------------------------------------------------
+// STEP 3: Dates — everything in Paris time
+// ---------------------------------------------------------------------------
+// ZEUS stores times in UTC. Classes happen in Paris, so we always display
+// Paris time, even when the phone viewing this is set to another time zone.
+const PARIS = "Europe/Paris";
+
+const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit", minute: "2-digit", timeZone: PARIS,
+});
+
+// "en-CA" happens to format dates as YYYY-MM-DD, which makes a handy key.
+const dateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric", month: "2-digit", day: "2-digit", timeZone: PARIS,
+});
+
+/** The Paris calendar date an event happens on, e.g. "2026-09-22". */
+function parisDateKey(date) {
+  return dateKeyFormatter.format(date);
+}
+
+// Day keys are plain calendar dates, so we do date math on them in UTC,
+// where there's no daylight-saving shift to trip over.
+function keyToDate(key) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function addDays(key, days) {
+  const date = keyToDate(key);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function mondayOf(key) {
+  const weekday = keyToDate(key).getUTCDay(); // 0 = Sunday, 1 = Monday, ...
+  return addDays(key, -((weekday + 6) % 7));
+}
+
+const weekdayShort = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" });
+const weekdayLong = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
+const dayMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+function formatDuration(ms) {
+  const minutes = Math.round(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+// ---------------------------------------------------------------------------
+// STEP 4: Render the week view — day tabs on top, that day's classes below
+// ---------------------------------------------------------------------------
 
 // Event text (SUMMARY/LOCATION/DESCRIPTION) is free-form text written by
 // school staff, not something we control — escape it before it goes into
@@ -238,71 +281,131 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
-function renderLegend(events) {
-  const legend = document.getElementById("legend");
-  const hasExam = events.some((event) => classify(event.summary).isExam);
+const ICON_CLOCK = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
+const ICON_PIN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`;
 
-  legend.innerHTML = "";
-  if (hasExam) {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-    item.innerHTML = `<span class="legend-swatch" style="background:var(--color-exam)"></span>Exam`;
-    legend.appendChild(item);
+let eventsByDay = new Map(); // "2026-09-22" -> that day's classes, in time order
+let selectedDay = "";
+
+function indexByDay(events) {
+  const byDay = new Map();
+  for (const event of [...events].sort((a, b) => a.start - b.start)) {
+    const key = parisDateKey(event.start);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(event);
   }
-  const note = document.createElement("div");
-  note.className = "legend-item";
-  note.textContent = "Every other course gets its own consistent color.";
-  legend.appendChild(note);
-  legend.hidden = false;
+  return byDay;
 }
 
-function renderSchedule(events) {
+/** Open on your next class: today if you still have one, otherwise the
+ *  next day that does. If the whole file is in the past, its last day. */
+function pickStartDay(events) {
+  const now = new Date();
+  const sorted = [...events].sort((a, b) => a.start - b.start);
+  const next = sorted.find((event) => event.end >= now) || sorted[sorted.length - 1];
+  return parisDateKey(next.start);
+}
+
+function renderWeek() {
+  const monday = mondayOf(selectedDay);
+  const today = parisDateKey(new Date());
+  const tabs = document.getElementById("day-tabs");
+  tabs.innerHTML = "";
+
+  for (let i = 0; i < 7; i++) {
+    const key = addDays(monday, i);
+    const count = (eventsByDay.get(key) || []).length;
+    if (i === 6 && count === 0 && key !== selectedDay) continue; // hide an empty Sunday
+
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "day-tab";
+    tab.classList.toggle("is-selected", key === selectedDay);
+    tab.classList.toggle("is-today", key === today);
+    tab.innerHTML = `
+      <span class="day-tab-name">${weekdayShort.format(keyToDate(key))}</span>
+      <span class="day-tab-count">${count || ""}</span>
+    `;
+    tab.addEventListener("click", () => {
+      selectedDay = key;
+      renderWeek();
+    });
+    tabs.appendChild(tab);
+  }
+
+  const sunday = addDays(monday, 6);
+  document.getElementById("week-label").textContent =
+    `${dayMonth.format(keyToDate(monday))} – ${dayMonth.format(keyToDate(sunday))}`;
+
+  renderDay();
+}
+
+function renderDay() {
+  const dayEvents = eventsByDay.get(selectedDay) || [];
+  const date = keyToDate(selectedDay);
+
+  document.getElementById("day-title").textContent = weekdayLong.format(date);
+  document.getElementById("day-subtitle").textContent =
+    `${dayMonth.format(date)} · ` +
+    (dayEvents.length === 0
+      ? "No classes"
+      : `${dayEvents.length} ${dayEvents.length === 1 ? "class" : "classes"} scheduled`);
+
   const container = document.getElementById("schedule");
   container.innerHTML = "";
 
-  if (events.length === 0) {
-    container.innerHTML = `<p class="error">No events found in that file.</p>`;
+  if (dayEvents.length === 0) {
+    container.innerHTML = `<p class="empty-day">Nothing scheduled.</p>`;
     return;
   }
 
-  for (const { key, events: dayEvents } of groupByDay(events)) {
-    const dayGroup = document.createElement("div");
-    dayGroup.className = "day-group";
-
-    const heading = document.createElement("h2");
-    heading.className = "day-heading";
-    heading.textContent = dayFormatter.format(new Date(key));
-    dayGroup.appendChild(heading);
-
-    for (const event of dayEvents) {
-      const type = classify(event.summary);
-
-      const card = document.createElement("div");
-      card.className = "event-card";
-      card.style.borderLeftColor = type.color;
-
-      const timeRange = `${timeFormatter.format(event.start)} – ${timeFormatter.format(event.end)}`;
-      const title = escapeHTML(event.summary || "Untitled class");
-      const location = event.location ? escapeHTML(event.location) : "";
-      const note = event.description ? escapeHTML(event.description) : "";
-
-      card.innerHTML = `
-        <div class="event-top-row">
-          <span class="event-time">${timeRange}</span>
-          ${type.isExam ? `<span class="event-type-badge" style="background:${type.color}">Exam</span>` : ""}
-        </div>
-        <div class="event-title">${title}</div>
-        <div class="event-meta">
-          ${location ? `📍 ${location}` : ""}
-          ${note ? `&nbsp;·&nbsp;${note}` : ""}
-        </div>
-      `;
-
-      dayGroup.appendChild(card);
+  let latestEnd = null;
+  for (const event of dayEvents) {
+    // Show a gap of 15+ minutes as an explicit break, so free time is obvious.
+    if (latestEnd && event.start - latestEnd >= 15 * 60 * 1000) {
+      const gap = document.createElement("div");
+      gap.className = "break-row";
+      gap.textContent = `Break · ${formatDuration(event.start - latestEnd)}`;
+      container.appendChild(gap);
     }
-
-    container.appendChild(dayGroup);
+    container.appendChild(renderCard(event));
+    if (!latestEnd || event.end > latestEnd) latestEnd = event.end;
   }
+}
+
+function renderCard(event) {
+  const type = classify(event.summary);
+  const group = extractGroup(event.summary);
+  const start = timeFormatter.format(event.start);
+  const end = timeFormatter.format(event.end);
+
+  const row = document.createElement("div");
+  row.className = "timeline-row";
+  row.innerHTML = `
+    <div class="timeline-time">${start}</div>
+    <article class="class-card" style="--card-color: ${type.color}">
+      <div class="class-card-top">
+        <h3 class="class-title">${escapeHTML(event.summary || "Untitled class")}</h3>
+        ${type.isExam ? `<span class="class-badge">Exam</span>` : ""}
+      </div>
+      ${event.description ? `<p class="class-note">${escapeHTML(event.description)}</p>` : ""}
+      <div class="chips">
+        <span class="chip">${ICON_CLOCK}${start} – ${end}</span>
+        ${event.location ? `<span class="chip">${ICON_PIN}${escapeHTML(event.location)}</span>` : ""}
+        ${group ? `<span class="chip">${escapeHTML(group)}</span>` : ""}
+      </div>
+    </article>
+  `;
+  return row;
+}
+
+function showWeekView(events) {
+  eventsByDay = indexByDay(events);
+  selectedDay = pickStartDay(events);
+  document.getElementById("upload-section").hidden = true;
+  document.getElementById("course-picker").hidden = true;
+  document.getElementById("week-view").hidden = false;
+  renderWeek();
 }
 
 function showError(message) {
@@ -456,20 +559,13 @@ function showFilteredSchedule() {
   saveSelection(selected);
 
   const filtered = allEvents.filter((event) => selected.has(event.summary));
-
-  document.getElementById("course-picker").hidden = true;
-  document.getElementById("schedule-header").hidden = false;
-
   if (filtered.length === 0) {
     showError("No courses selected — pick at least one from the list.");
-    document.getElementById("legend").hidden = true;
-    document.getElementById("schedule").innerHTML = "";
     return;
   }
 
   showError("");
-  renderLegend(filtered);
-  renderSchedule(filtered);
+  showWeekView(filtered);
 }
 
 function loadScheduleFromText(text) {
@@ -492,9 +588,7 @@ function loadScheduleFromText(text) {
     if (stillValid.length > 0) {
       showFilteredSchedule();
     } else {
-      document.getElementById("schedule-header").hidden = true;
-      document.getElementById("legend").hidden = true;
-      document.getElementById("schedule").innerHTML = "";
+      document.getElementById("week-view").hidden = true;
     }
   } catch (err) {
     showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
@@ -534,7 +628,27 @@ document.getElementById("show-schedule-btn").addEventListener("click", showFilte
 document.getElementById("edit-courses-btn").addEventListener("click", () => {
   const selected = getCheckedCourseNames();
   renderCoursePicker(getUniqueCourses(allEvents), selected);
-  document.getElementById("schedule-header").hidden = true;
+  document.getElementById("week-view").hidden = true;
+});
+
+document.getElementById("change-source-btn").addEventListener("click", () => {
+  document.getElementById("upload-section").hidden = false;
+  document.getElementById("week-view").hidden = true;
+});
+
+document.getElementById("prev-week-btn").addEventListener("click", () => {
+  selectedDay = addDays(selectedDay, -7);
+  renderWeek();
+});
+
+document.getElementById("next-week-btn").addEventListener("click", () => {
+  selectedDay = addDays(selectedDay, 7);
+  renderWeek();
+});
+
+document.getElementById("today-btn").addEventListener("click", () => {
+  selectedDay = parisDateKey(new Date());
+  renderWeek();
 });
 
 document.getElementById("load-url-btn").addEventListener("click", () => {

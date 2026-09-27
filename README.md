@@ -48,9 +48,9 @@ by itself to read your schedule, no login required — don't post it publicly
 
 | File | Purpose |
 |---|---|
-| `index.html` | The page skeleton: upload button, course picker, and containers (`#legend`, `#schedule`) that JavaScript fills in. |
-| `style.css` | All colors and layout. |
-| `app.js` | Everything else: reads the file, parses the `.ics` text format, runs the course picker, classifies each class, and builds the HTML for the page. |
+| `index.html` | The page skeleton: upload panel, course picker, and the week view (`#day-tabs`, `#schedule`) that JavaScript fills in. |
+| `style.css` | All colors and layout — a dark, mobile-first design. Colors are tokens at the top of the file. |
+| `app.js` | Everything else: reads the file, parses the `.ics` text format, runs the course picker, and builds the week view. |
 | `sample.ics` | A small fake schedule for the "try it with a sample" button. |
 
 ## How `app.js` works, in order
@@ -63,7 +63,9 @@ by itself to read your schedule, no login required — don't post it publicly
 6. **`renderCoursePicker`** / **`getCheckedCourseNames`** — builds the searchable checklist, and reads back which boxes are checked when you click "Show my schedule."
 7. **`loadSavedSelection`** / **`saveSelection`** — read and write your course picks to the browser's `localStorage`, so you don't have to re-pick every time.
 8. **`classify`** — looks at the event's French title for exam-sounding words (`examen`, `partiel`, `contrôle`) to apply a red highlight; every other course gets a stable color derived from its own name (same course name → same color, every time).
-9. **`groupByDay`** / **`renderSchedule`** — sorts the *selected* events chronologically and builds the actual HTML cards you see on the page. Text is HTML-escaped before insertion, since it's free-form text written by school staff, not something we control.
+9. **`parisDateKey`** / **`addDays`** / **`mondayOf`** — date helpers. ZEUS stores times in UTC; classes happen in Paris, so every time and date is shown in Paris time even if your phone is set to another time zone.
+10. **`showWeekView`** / **`pickStartDay`** — groups your selected classes by day and opens on your next class (today if you still have one, otherwise the next day that does).
+11. **`renderWeek`** / **`renderDay`** / **`renderCard`** — draws the day tabs (with class counts, today outlined), then the chosen day's classes as cards with time, room and group chips, with a "Break" marker for gaps of 15+ minutes. Text is HTML-escaped before insertion, since it's free-form text written by school staff, not something we control.
 
 ## What a real ZEUS export actually contains (confirmed, not guessed)
 
@@ -116,11 +118,19 @@ already solved by the link itself, not something to build.
 
 ## Roadmap
 
-- **V1 (this)** — load-by-link with auto-refresh (falls back to manual
+Target: finished by December.
+
+- **V1** — load-by-link with auto-refresh (falls back to manual
   upload if the browser blocks it), course picker with search +
   persistence, English display, per-course color coding, exam
   highlighting. Done.
-- **V1.1** — weekly grid view as an alternative to the day-list view.
+- **V1.1** — app-style week view: dark theme, day tabs with class counts,
+  timeline cards with time/room/group chips, break markers, Paris-time
+  display. Done. (Professor name and Lecture/Practical badges are not
+  possible — see "What a real ZEUS export actually contains" above.)
+- **V1.2** — make it installable to a phone's home screen (a PWA: a
+  manifest file plus an icon), and host it (e.g. GitHub Pages) so it's a
+  real URL instead of a local file.
 - **V2** — confirmed unnecessary if the CORS check above comes back
   positive (no separate backend/proxy needed to auto-fetch). If it comes
   back negative, revisit whether a small proxy is worth building just to
