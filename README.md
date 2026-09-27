@@ -1,28 +1,37 @@
 # ZEUS Timetable
 
-Your EPITA ZEUS timetable, in English, on your phone. Load ZEUS's calendar
-export once, tick the courses you're enrolled in, and the app remembers them:
-after that it opens straight to your next class, works offline, and can add
-your classes to Google or Apple Calendar.
+Your EPITA ZEUS timetable, in English, on your phone. Load your group's
+calendar export from ZEUS once, and after that the app opens straight to
+your next class, works offline, and can add your classes to Google or Apple
+Calendar.
 
 No login handling, no server, no external services — it's four plain files
 (`index.html`, `style.css`, `ics.js`, `app.js`) that run in any browser.
 
 ## Using it
 
-1. **Get your ZEUS data.** Log into `zeus.ionis-it.com` (Office 365), open
-   **Groupes** in the left sidebar, tick **EPITA** (the top-level box — no
-   need to dig into the tree, the app does that part), and click
-   **"Générer un ICS"**. ZEUS offers a link and a download:
+1. **Get your group's ZEUS data (once).** Log into `zeus.ionis-it.com`
+   (Office 365), open **Groupes** in the left sidebar and narrow down to your
+   own group (e.g. EPITA → CLASSES PREPARATOIRES → PREPA PARIS → SPE PARIS →
+   tick your group), then click **"Générer un ICS"**. ZEUS offers a link and
+   a download:
    - **Copy the link** and paste it into the app's "paste your ZEUS calendar
      link" box. If ZEUS allows it (see "Still open" below), the app then
-     refreshes itself from that link every time you open it.
+     refreshes itself from that link every time you open it — you never do
+     the ZEUS clicks again.
    - **Or download the file** and choose it with the upload box. Works
      everywhere; use **Reload** in the app to load a fresh file when ZEUS
      changes.
-2. **Pick your courses.** The export covers the whole school, so search for
-   your courses (by name, or a group like "A1") and tick them. This is
-   remembered.
+2. **Hide anything you don't take** (optional). The app shows your whole
+   group's timetable straight away. If your group has a course you didn't
+   choose (an elective, say), tap **Edit courses** and untick it. The app
+   remembers what you *hid*, so a course ZEUS adds to your group later
+   still shows up automatically.
+
+   Don't use the whole-school export (ticking just "EPITA"): many courses
+   share a name across groups ("Algorithmique" alone covers 491 sessions),
+   and nothing in the file tells them apart, so you'd get other groups'
+   classes mixed in. The app warns you if you load one.
 3. **Use it.** The app opens on your next class. Day tabs show how many
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
@@ -83,27 +92,31 @@ installed copies pick up the new version cleanly.
 1. **`parseICS`** (`ics.js`) turns the file's text into a list of events:
    `{ uid, summary, location, description, start, end }`. It un-wraps long
    lines, un-escapes text, trims stray spaces, and drops nonsense dates.
-2. **`getUniqueCourses` / `renderCoursePicker`** (`app.js`) list every
-   distinct course so you can tick yours; **`saveSelection`** remembers them.
-3. **`showFilteredSchedule`** keeps only your courses, saves that small list
+2. **`loadScheduleFromText`** (`app.js`) decides what's next: a file for
+   one group goes straight to the timetable; a whole-school file (over 100
+   different course names) opens the course picker first.
+3. **`getUniqueCourses` / `renderCoursePicker`** list every distinct course
+   with a tick box; **`saveHiddenCourses`** remembers the unticked ones.
+4. **`showFilteredSchedule`** drops hidden courses, saves the rest
    (**`saveMySchedule`**), and opens the week view.
-4. **`showWeekView` → `renderWeek` → `renderDay` → `renderCard`** draw the
+5. **`showWeekView` → `renderWeek` → `renderDay` → `renderCard`** draw the
    day tabs and the cards. All dates and times are computed in Paris time
    (**`parisDateKey`**), because ZEUS stores UTC and a phone may be set to
    another time zone.
-5. **`classify`** colors each card: exam-sounding titles in red, every other
+6. **`classify`** colors each card: exam-sounding titles in red, every other
    course a stable color derived from its name (**`colorForCourse`**).
-6. **`downloadMySchedule`** writes your classes back out with **`buildICS`**.
-7. On startup, the saved copy is shown immediately, then refreshed from your
+7. **`downloadMySchedule`** writes your classes back out with **`buildICS`**.
+8. On startup, the saved copy is shown immediately, then refreshed from your
    ZEUS link in the background if you saved one.
 
 ## What ZEUS's export does and doesn't contain (confirmed)
 
 Checked against a real 11,519-event export and EPITA's own ZEUS guide:
 
-- **It covers the whole school**, not one student — hence the course picker.
-  ZEUS's own 6-step "Groupes → EPITA → … → tick your group" tree is what the
-  picker replaces.
+- **What's in it depends on what you tick in ZEUS.** Ticking just "EPITA"
+  exports the whole school, where same-named courses in different groups
+  can't be told apart; narrowing to your group first gives exactly your
+  timetable. That's why the app expects a group export.
 - **Professor name, course code and class type (lecture/lab/exam) are not in
   the file.** ZEUS's website shows them, but its export never includes them,
   so no app built on the export can show them. Exams are detected from the

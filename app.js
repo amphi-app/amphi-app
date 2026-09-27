@@ -362,27 +362,34 @@ function showError(message) {
 }
 
 // ---------------------------------------------------------------------------
-// STEP 2 (continued): Course picker — a real ZEUS export covers every
-// course in the school, so the student has to tell us which ones are theirs.
+// STEP 2 (continued): Hiding courses you don't take
 // ---------------------------------------------------------------------------
+// A ZEUS file narrowed to your group is already your timetable, so every
+// course shows by default. We remember the courses you HIDE, not the ones
+// you keep: that way a course ZEUS adds to your group later shows up on its
+// own, instead of being silently left out.
 
-const STORAGE_KEY = "zeus-schedule-selected-courses";
+const HIDDEN_STORAGE_KEY = "zeus-schedule-hidden-courses";
+
+// Past this many different course names, the file is almost certainly the
+// whole school rather than one group (the real whole-school export had 917).
+const WHOLE_SCHOOL_COURSE_COUNT = 100;
 
 // localStorage can throw (private browsing, disabled site data, etc.), and
 // this is a convenience feature, not something the app depends on — so any
 // failure here should just mean "don't remember," not a broken page.
-function loadSavedSelection() {
+function loadHiddenCourses() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(HIDDEN_STORAGE_KEY);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
   }
 }
 
-function saveSelection(selectedSet) {
+function saveHiddenCourses(hiddenSet) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...selectedSet]));
+    localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify([...hiddenSet]));
   } catch {
     // Ignore — the app still works for this session, it just won't remember.
   }
@@ -465,10 +472,19 @@ function getUniqueCourses(events) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function renderCoursePicker(courses, selected) {
+function renderCoursePicker(courses, hidden) {
   const picker = document.getElementById("course-picker");
   const list = document.getElementById("course-list");
   list.innerHTML = "";
+
+  document.getElementById("picker-intro").textContent =
+    courses.length > WHOLE_SCHOOL_COURSE_COUNT
+      ? "This file covers the whole school, and courses with the same name in different " +
+        "groups can't be told apart here. For an accurate timetable, narrow to your group " +
+        "in ZEUS first (Groupes → EPITA → … → tick your group), then click \"Générer un ICS\". " +
+        "Otherwise, tick your courses below."
+      : "Untick any course you don't take (like an elective you didn't choose). " +
+        "Courses ZEUS adds to your group later will show up automatically.";
 
   for (const course of courses) {
     const row = document.createElement("label");
@@ -478,7 +494,7 @@ function renderCoursePicker(courses, selected) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = course.name;
-    checkbox.checked = selected.has(course.name);
+    checkbox.checked = !hidden.has(course.name);
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "course-name";
@@ -500,6 +516,11 @@ function getCheckedCourseNames() {
   return new Set([...boxes].map((box) => box.value));
 }
 
+function getHiddenCourseNames() {
+  const boxes = document.querySelectorAll("#course-list input[type=checkbox]:not(:checked)");
+  return new Set([...boxes].map((box) => box.value));
+}
+
 function updateShowButton() {
   const count = getCheckedCourseNames().size;
   document.getElementById("show-schedule-btn").textContent =
@@ -511,19 +532,19 @@ function updateShowButton() {
 let isSampleData = false;
 
 function showFilteredSchedule() {
-  const selected = getCheckedCourseNames();
-  const filtered = allEvents.filter((event) => selected.has(event.summary));
-  if (filtered.length === 0) {
-    showError("No courses selected — pick at least one from the list.");
+  const hidden = getHiddenCourseNames();
+  const shown = allEvents.filter((event) => !hidden.has(event.summary));
+  if (shown.length === 0) {
+    showError("Every course is unticked — tick at least one from the list.");
     return;
   }
 
   if (!isSampleData) {
-    saveSelection(selected);
-    saveMySchedule(filtered);
+    saveHiddenCourses(hidden);
+    saveMySchedule(shown);
   }
   showError("");
-  showWeekView(filtered, new Date());
+  showWeekView(shown, new Date());
 }
 
 function loadScheduleFromText(text, { isSample = false } = {}) {
@@ -538,18 +559,22 @@ function loadScheduleFromText(text, { isSample = false } = {}) {
     allEvents = events;
 
     const courses = getUniqueCourses(events);
-    const saved = isSample ? new Set() : loadSavedSelection();
-    renderCoursePicker(courses, saved);
-    updateShowButton();
+    const hidden = isSample ? new Set() : loadHiddenCourses();
 
-    // If we already know their courses from last time, skip straight to
-    // the schedule — but only for names that still exist in this file.
-    const stillValid = [...saved].filter((name) => courses.some((c) => c.name === name));
-    if (stillValid.length > 0) {
-      showFilteredSchedule();
-    } else {
+    if (courses.length > WHOLE_SCHOOL_COURSE_COUNT && hidden.size === 0) {
+      // First time with a whole-school file: start with nothing ticked and
+      // let the student tick their courses.
+      renderCoursePicker(courses, new Set(courses.map((course) => course.name)));
+      updateShowButton();
       document.getElementById("week-view").hidden = true;
+      return;
     }
+
+    // A file narrowed to your group (or one we've seen before): go straight
+    // to the timetable, minus anything you've hidden.
+    renderCoursePicker(courses, hidden);
+    updateShowButton();
+    showFilteredSchedule();
   } catch (err) {
     showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
     console.error(err);
@@ -593,11 +618,11 @@ document.getElementById("edit-courses-btn").addEventListener("click", () => {
     // Opened from the saved copy, which only has your own classes — the
     // full course list lives in the ZEUS file, so that's needed again.
     document.getElementById("upload-section").hidden = false;
-    showError("To change your courses, load your ZEUS file or link again. Your current picks will stay ticked.");
+    showError("To change your courses, load your ZEUS file or link again. Courses you've hidden will stay hidden.");
     return;
   }
-  const selected = isSampleData ? getCheckedCourseNames() : loadSavedSelection();
-  renderCoursePicker(getUniqueCourses(allEvents), selected);
+  const hidden = isSampleData ? getHiddenCourseNames() : loadHiddenCourses();
+  renderCoursePicker(getUniqueCourses(allEvents), hidden);
   updateShowButton();
 });
 

@@ -8,7 +8,7 @@
   Requests to other sites (like ZEUS) are left completely alone.
 */
 
-const CACHE_NAME = "zeus-timetable-v1";
+const CACHE_NAME = "zeus-timetable-v2";
 const APP_FILES = [
   "./",
   "./index.html",

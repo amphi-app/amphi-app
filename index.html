@@ -18,7 +18,7 @@
 
     <section id="upload-section" class="panel">
       <h1>ZEUS Timetable</h1>
-      <p class="subtitle">Your EPITA schedule, in English, without the six clicks.</p>
+      <p class="subtitle">Your EPITA schedule, in English. Set it up once, then it's one tap.</p>
 
       <label class="file-drop" for="ics-input">
         <span id="file-drop-label">Choose your .ics file (from ZEUS → "Générer un ICS")</span>
@@ -37,10 +37,7 @@
     </section>
 
     <section id="course-picker" class="panel" hidden>
-      <p class="picker-intro">
-        This file covers the whole school. Pick the courses you're actually
-        enrolled in — your selection is remembered for next time.
-      </p>
+      <p id="picker-intro" class="picker-intro"></p>
       <input type="text" id="course-search" placeholder="Search courses…" />
       <div id="course-list"></div>
       <button id="show-schedule-btn" type="button" class="primary-btn">Show my schedule</button>
