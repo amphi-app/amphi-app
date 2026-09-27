@@ -1,0 +1,8 @@
+{
+  "name": "zeus-timetable",
+  "private": true,
+  "description": "An English, mobile-first viewer for EPITA's ZEUS timetable.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

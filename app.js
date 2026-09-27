@@ -81,124 +81,6 @@ END:VCALENDAR
 `;
 
 // ---------------------------------------------------------------------------
-// STEP 1: Parse raw .ics text into an array of event objects
-// ---------------------------------------------------------------------------
-
-/**
- * The ICS format (RFC 5545) sometimes wraps a single logical line across
- * multiple physical lines: a continuation line starts with a space or tab.
- * This joins those back into one line each.
- */
-function unfoldLines(rawLines) {
-  const lines = [];
-  for (const line of rawLines) {
-    if ((line.startsWith(" ") || line.startsWith("\t")) && lines.length > 0) {
-      lines[lines.length - 1] += line.slice(1);
-    } else if (line.length > 0) {
-      lines.push(line);
-    }
-  }
-  return lines;
-}
-
-/** Splits one ICS line like "DTSTART;TZID=Europe/Paris:20260922T083000"
- *  into its name, parameters, and value. */
-function parseICSLine(line) {
-  const colonIndex = line.indexOf(":");
-  const left = colonIndex === -1 ? line : line.slice(0, colonIndex);
-  const value = colonIndex === -1 ? "" : line.slice(colonIndex + 1);
-  const [name, ...params] = left.split(";");
-  return { name: name.toUpperCase(), value, params };
-}
-
-/** ICS escapes commas, semicolons, and newlines with a backslash. */
-function unescapeICSText(value) {
-  return value
-    .replace(/\\n/gi, "\n")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\");
-}
-
-/** Turns "20260922T083000" or "20260922T083000Z" into a JS Date. */
-function parseICSDate(value) {
-  const isUTC = value.endsWith("Z");
-  const clean = value.replace("Z", "");
-  const year = Number(clean.slice(0, 4));
-  const month = Number(clean.slice(4, 6)) - 1; // JS months are 0-indexed
-  const day = Number(clean.slice(6, 8));
-  const hour = Number(clean.slice(9, 11)) || 0;
-  const minute = Number(clean.slice(11, 13)) || 0;
-  const second = Number(clean.slice(13, 15)) || 0;
-
-  return isUTC
-    ? new Date(Date.UTC(year, month, day, hour, minute, second))
-    : new Date(year, month, day, hour, minute, second);
-}
-
-// ZEUS's own data has at least one bogus placeholder date (year 3036, seen
-// on a "date to be rescheduled" event). Anything wildly outside a normal
-// school-year window is a data bug, not a real class, so we drop it rather
-// than show "your class in March 3036."
-const MIN_YEAR = new Date().getFullYear() - 1;
-const MAX_YEAR = new Date().getFullYear() + 3;
-
-function isPlausibleDate(date) {
-  const year = date.getFullYear();
-  return year >= MIN_YEAR && year <= MAX_YEAR;
-}
-
-/**
- * Parses the full text of a .ics file into an array of:
- *   { summary, location, description, start: Date, end: Date }
- */
-function parseICS(text) {
-  const lines = unfoldLines(text.split(/\r\n|\n|\r/));
-  const events = [];
-  let current = null;
-
-  for (const line of lines) {
-    if (line === "BEGIN:VEVENT") {
-      current = {};
-      continue;
-    }
-    if (line === "END:VEVENT") {
-      if (current && current.start && isPlausibleDate(current.start)) {
-        current.end = current.end || current.start; // DTEND is optional in the ICS spec
-        events.push(current);
-      }
-      current = null;
-      continue;
-    }
-    if (!current) continue;
-
-    const { name, value } = parseICSLine(line);
-    switch (name) {
-      // .trim() because some real ZEUS entries have a stray leading space
-      // ("SUMMARY: Anglais général 1"), which would otherwise make the same
-      // course look like two different ones in the picker below.
-      case "SUMMARY":
-        current.summary = unescapeICSText(value).trim();
-        break;
-      case "LOCATION":
-        current.location = unescapeICSText(value).trim();
-        break;
-      case "DESCRIPTION":
-        current.description = unescapeICSText(value).trim();
-        break;
-      case "DTSTART":
-        current.start = parseICSDate(value);
-        break;
-      case "DTEND":
-        current.end = parseICSDate(value);
-        break;
-    }
-  }
-
-  return events;
-}
-
-// ---------------------------------------------------------------------------
 // STEP 2: Decide how to color/badge each event
 // ---------------------------------------------------------------------------
 
@@ -322,6 +204,7 @@ function renderWeek() {
     tab.className = "day-tab";
     tab.classList.toggle("is-selected", key === selectedDay);
     tab.classList.toggle("is-today", key === today);
+    tab.setAttribute("aria-pressed", String(key === selectedDay));
     tab.innerHTML = `
       <span class="day-tab-name">${weekdayShort.format(keyToDate(key))}</span>
       <span class="day-tab-count">${count || ""}</span>
@@ -399,13 +282,77 @@ function renderCard(event) {
   return row;
 }
 
-function showWeekView(events) {
+let myEvents = []; // the classes currently shown (your selected courses only)
+
+function showWeekView(events, updatedAt) {
+  myEvents = events;
   eventsByDay = indexByDay(events);
   selectedDay = pickStartDay(events);
+  renderUpdatedLabel(updatedAt);
   document.getElementById("upload-section").hidden = true;
   document.getElementById("course-picker").hidden = true;
   document.getElementById("week-view").hidden = false;
   renderWeek();
+}
+
+/** "Updated today" / "Updated 3 days ago", so you know how fresh this is. */
+function renderUpdatedLabel(updatedAt) {
+  const label = document.getElementById("updated-label");
+  const days = Math.floor((Date.now() - updatedAt.getTime()) / 86400000);
+  if (parisDateKey(updatedAt) === parisDateKey(new Date())) {
+    label.textContent = "Updated today";
+  } else {
+    label.textContent = `Updated ${days <= 1 ? "yesterday" : `${days} days ago`}`;
+  }
+  // After a week, nudge towards reloading — ZEUS schedules do change.
+  label.classList.toggle("is-stale", days >= 7);
+}
+
+// ---------------------------------------------------------------------------
+// Remembering your schedule between visits
+// ---------------------------------------------------------------------------
+// Only your own classes are saved (a few KB), not the whole-school file, so
+// the app opens instantly — even offline — without re-uploading anything.
+
+const SCHEDULE_STORAGE_KEY = "zeus-schedule-my-events";
+
+function saveMySchedule(events) {
+  try {
+    localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify({ savedAt: new Date(), events }));
+  } catch {
+    // Ignore — the app still works for this session, it just won't remember.
+  }
+}
+
+function loadMySchedule() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCHEDULE_STORAGE_KEY));
+    if (!saved || saved.events.length === 0) return null;
+    // JSON turns Dates into text, so turn them back into Dates.
+    const events = saved.events.map((event) => ({
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    }));
+    return { savedAt: new Date(saved.savedAt), events };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Exporting to Google Calendar / Apple Calendar
+// ---------------------------------------------------------------------------
+
+function downloadMySchedule() {
+  const blob = new Blob([buildICS(myEvents)], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "epita-timetable.ics";
+  link.click();
+  // Give the browser a moment to start the download before freeing the file.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function showError(message) {
@@ -493,15 +440,14 @@ async function loadFromURL(url, { isAutoLoad = false } = {}) {
   } catch (err) {
     console.error(err);
     if (isAutoLoad) {
-      // Fail quietly on auto-load — the file upload is still right there.
-      forgetSavedUrl();
-      document.getElementById("saved-url-note").hidden = true;
+      // Fail quietly on auto-load (e.g. no signal) — keep the link and just
+      // keep showing the saved copy; the next visit tries again.
       return;
     }
     showError(
       "Couldn't load that link directly — ZEUS's server may not allow this app to fetch it " +
-      "from the browser (a security setting called CORS). Download the file from that link " +
-      "instead and upload it below."
+      "from the browser (a security setting called CORS). Open the link in a new tab to " +
+      "download the file, then choose that file above."
     );
   }
 }
@@ -554,21 +500,33 @@ function getCheckedCourseNames() {
   return new Set([...boxes].map((box) => box.value));
 }
 
+function updateShowButton() {
+  const count = getCheckedCourseNames().size;
+  document.getElementById("show-schedule-btn").textContent =
+    count === 0 ? "Show my schedule" : `Show my schedule (${count} ${count === 1 ? "course" : "courses"})`;
+}
+
+// The sample is for trying the app out, so it must never overwrite your
+// real saved courses or timetable.
+let isSampleData = false;
+
 function showFilteredSchedule() {
   const selected = getCheckedCourseNames();
-  saveSelection(selected);
-
   const filtered = allEvents.filter((event) => selected.has(event.summary));
   if (filtered.length === 0) {
     showError("No courses selected — pick at least one from the list.");
     return;
   }
 
+  if (!isSampleData) {
+    saveSelection(selected);
+    saveMySchedule(filtered);
+  }
   showError("");
-  showWeekView(filtered);
+  showWeekView(filtered, new Date());
 }
 
-function loadScheduleFromText(text) {
+function loadScheduleFromText(text, { isSample = false } = {}) {
   try {
     const events = parseICS(text);
     if (events.length === 0) {
@@ -576,11 +534,13 @@ function loadScheduleFromText(text) {
       return;
     }
     showError("");
+    isSampleData = isSample;
     allEvents = events;
 
     const courses = getUniqueCourses(events);
-    const saved = loadSavedSelection();
+    const saved = isSample ? new Set() : loadSavedSelection();
     renderCoursePicker(courses, saved);
+    updateShowButton();
 
     // If we already know their courses from last time, skip straight to
     // the schedule — but only for names that still exist in this file.
@@ -613,8 +573,10 @@ document.getElementById("ics-input").addEventListener("change", (event) => {
 });
 
 document.getElementById("load-sample-btn").addEventListener("click", () => {
-  loadScheduleFromText(SAMPLE_ICS);
+  loadScheduleFromText(SAMPLE_ICS, { isSample: true });
 });
+
+document.getElementById("course-list").addEventListener("change", updateShowButton);
 
 document.getElementById("course-search").addEventListener("input", (event) => {
   const query = event.target.value.toLowerCase();
@@ -626,10 +588,20 @@ document.getElementById("course-search").addEventListener("input", (event) => {
 document.getElementById("show-schedule-btn").addEventListener("click", showFilteredSchedule);
 
 document.getElementById("edit-courses-btn").addEventListener("click", () => {
-  const selected = getCheckedCourseNames();
-  renderCoursePicker(getUniqueCourses(allEvents), selected);
   document.getElementById("week-view").hidden = true;
+  if (allEvents.length === 0) {
+    // Opened from the saved copy, which only has your own classes — the
+    // full course list lives in the ZEUS file, so that's needed again.
+    document.getElementById("upload-section").hidden = false;
+    showError("To change your courses, load your ZEUS file or link again. Your current picks will stay ticked.");
+    return;
+  }
+  const selected = isSampleData ? getCheckedCourseNames() : loadSavedSelection();
+  renderCoursePicker(getUniqueCourses(allEvents), selected);
+  updateShowButton();
 });
+
+document.getElementById("export-btn").addEventListener("click", downloadMySchedule);
 
 document.getElementById("change-source-btn").addEventListener("click", () => {
   document.getElementById("upload-section").hidden = false;
@@ -666,11 +638,27 @@ document.getElementById("forget-url-btn").addEventListener("click", () => {
   document.getElementById("ics-url-input").value = "";
 });
 
-// On page load, if we have a saved link from a previous visit, use it
-// automatically — this is what gets us from "six ZEUS clicks" to zero.
+// ---------------------------------------------------------------------------
+// On page load
+// ---------------------------------------------------------------------------
+
+// 1. Show the saved copy of your schedule straight away (works offline).
+const mySchedule = loadMySchedule();
+if (mySchedule) {
+  showWeekView(mySchedule.events, mySchedule.savedAt);
+}
+
+// 2. If you saved a ZEUS link, refresh from it in the background — this is
+//    what gets us from "six ZEUS clicks" to zero.
 const savedUrl = loadSavedUrl();
 if (savedUrl) {
   document.getElementById("ics-url-input").value = savedUrl;
   document.getElementById("saved-url-note").hidden = false;
   loadFromURL(savedUrl, { isAutoLoad: true });
+}
+
+// 3. Let the app be installed to the home screen and open offline.
+//    Service workers only run on a real web address, not a double-clicked file.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(console.error);
 }

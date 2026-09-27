@@ -35,7 +35,8 @@ body {
 main {
   max-width: 560px;
   margin: 0 auto;
-  padding: 16px 16px 48px;
+  /* env(...) keeps content clear of the notch when installed on a phone. */
+  padding: max(16px, env(safe-area-inset-top)) 16px max(48px, env(safe-area-inset-bottom));
 }
 
 button {
@@ -173,9 +174,27 @@ button {
 /* ---- Week view ---- */
 .toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 16px;
   margin-bottom: 8px;
+}
+
+#updated-label {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+#updated-label.is-stale {
+  color: #fbbf24;
+}
+
+.export-panel {
+  margin-top: 32px;
+}
+
+.export-panel .hint {
+  line-height: 1.5;
 }
 
 .day-header h2 {
