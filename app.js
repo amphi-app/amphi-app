@@ -282,10 +282,7 @@ function renderCard(event) {
   return row;
 }
 
-let myEvents = []; // the classes currently shown (your selected courses only)
-
 function showWeekView(events, updatedAt) {
-  myEvents = events;
   eventsByDay = indexByDay(events);
   selectedDay = pickStartDay(events);
   renderUpdatedLabel(updatedAt);
@@ -338,21 +335,6 @@ function loadMySchedule() {
   } catch {
     return null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Exporting to Google Calendar / Apple Calendar
-// ---------------------------------------------------------------------------
-
-function downloadMySchedule() {
-  const blob = new Blob([buildICS(myEvents)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "epita-timetable.ics";
-  link.click();
-  // Give the browser a moment to start the download before freeing the file.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function showError(message) {
@@ -625,8 +607,6 @@ document.getElementById("edit-courses-btn").addEventListener("click", () => {
   renderCoursePicker(getUniqueCourses(allEvents), hidden);
   updateShowButton();
 });
-
-document.getElementById("export-btn").addEventListener("click", downloadMySchedule);
 
 document.getElementById("change-source-btn").addEventListener("click", () => {
   document.getElementById("upload-section").hidden = false;

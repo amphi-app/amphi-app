@@ -2,8 +2,7 @@
 
 Your EPITA ZEUS timetable, in English, on your phone. Load your group's
 calendar export from ZEUS once, and after that the app opens straight to
-your next class, works offline, and can add your classes to Google or Apple
-Calendar.
+your next class and works offline.
 
 No login handling, no server, no external services — it's four plain files
 (`index.html`, `style.css`, `ics.js`, `app.js`) that run in any browser.
@@ -36,12 +35,7 @@ No login handling, no server, no external services — it's four plain files
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.
-4. **Add to your calendar** (optional). "Add to my calendar" downloads just
-   your classes as a calendar file. On iPhone, open it and tap "Add All".
-   For Google Calendar, on a computer: Settings → Import & export → Import —
-   ideally into a separate "EPITA" calendar, so a later re-import after
-   ZEUS changes is just "delete that calendar, import the new file".
-5. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
+4. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
    full-screen like an app, and works without internet.
 
@@ -73,15 +67,15 @@ installed copies pick up the new version cleanly.
   offline mode/installing. To test those too, run
   `python3 -m http.server` in this folder and open `http://localhost:8000`.
 - **Run the tests:** `npm test` (needs Node.js; nothing to install). They
-  cover reading and writing the calendar format, including the ZEUS quirks
+  cover reading the calendar format, including the ZEUS quirks
   below. Run them after every change to `ics.js`.
 
 | File | What it does |
 |---|---|
-| `index.html` | Page structure: upload panel, course picker, week view, export panel. |
+| `index.html` | Page structure: upload panel, course picker, week view. |
 | `style.css` | All the looks — dark, mobile-first. Colors are tokens at the top. |
-| `ics.js` | Reads and writes the `.ics` calendar format. No page code, so it's testable. |
-| `app.js` | Everything on screen: course picker, week view, saving, export, startup. |
+| `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
+| `app.js` | Everything on screen: course picker, week view, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
 | `tests/ics.test.js` | Automated tests for `ics.js`. |
@@ -105,8 +99,7 @@ installed copies pick up the new version cleanly.
    another time zone.
 6. **`classify`** colors each card: exam-sounding titles in red, every other
    course a stable color derived from its name (**`colorForCourse`**).
-7. **`downloadMySchedule`** writes your classes back out with **`buildICS`**.
-8. On startup, the saved copy is shown immediately, then refreshed from your
+7. On startup, the saved copy is shown immediately, then refreshed from your
    ZEUS link in the background if you saved one.
 
 ## What ZEUS's export does and doesn't contain (confirmed)

@@ -189,14 +189,6 @@ button {
   color: #fbbf24;
 }
 
-.export-panel {
-  margin-top: 32px;
-}
-
-.export-panel .hint {
-  line-height: 1.5;
-}
-
 .day-header h2 {
   margin: 0;
   font-size: 1.8rem;
