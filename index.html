@@ -20,18 +20,33 @@
       <h1>ZEUS Timetable</h1>
       <p class="subtitle">Your EPITA schedule, in English. Set it up once, then it's one tap.</p>
 
-      <label class="file-drop" for="ics-input">
-        <span id="file-drop-label">Choose your .ics file (from ZEUS → "Générer un ICS")</span>
-        <input type="file" id="ics-input" accept=".ics" />
-      </label>
+      <button id="back-btn" type="button" class="link-btn back-btn" hidden>← Back to my timetable</button>
 
       <div class="url-load-row">
-        <input type="url" id="ics-url-input" placeholder="…or paste your ZEUS calendar link" />
+        <input type="url" id="ics-url-input" placeholder="Paste your ZEUS calendar link" />
         <button id="load-url-btn" type="button">Load</button>
       </div>
       <p id="saved-url-note" class="hint" hidden>
-        Loaded from your saved link. <button id="forget-url-btn" type="button" class="link-btn">Forget it</button>
+        Your link is saved — the app refreshes from it every time you open it.
+        <button id="forget-url-btn" type="button" class="link-btn">Forget it</button>
       </p>
+
+      <details class="how-to">
+        <summary>How do I get my link?</summary>
+        <ol>
+          <li>Log into <a href="https://zeus.ionis-it.com/login" target="_blank" rel="noopener">ZEUS</a> with your school Office 365 account.</li>
+          <li>In the left sidebar, open <strong>Groupes</strong> and go down to your own group:
+            EPITA → CLASSES PREPARATOIRES (years 1–2) or CYCLE INGENIEUR (year 3) → your campus →
+            your year → tick your group. Your group is in your EPITA welcome email.</li>
+          <li>Click <strong>Générer un ICS</strong>, copy the link it gives you, and paste it above.</li>
+        </ol>
+        <p>You only do this once. Keep the link private: anyone who has it can see your timetable.</p>
+      </details>
+
+      <label class="file-drop" for="ics-input">
+        <span id="file-drop-label">Or upload a downloaded .ics file</span>
+        <input type="file" id="ics-input" accept=".ics" />
+      </label>
 
       <button id="load-sample-btn" type="button" class="link-btn">Or try it with a sample schedule</button>
     </section>
@@ -46,8 +61,9 @@
     <section id="week-view" hidden>
       <div class="toolbar">
         <span id="updated-label"></span>
-        <button id="edit-courses-btn" type="button" class="link-btn">Edit courses</button>
-        <button id="change-source-btn" type="button" class="link-btn">Reload</button>
+        <button id="refresh-btn" type="button" class="link-btn" hidden>Refresh</button>
+        <button id="edit-courses-btn" type="button" class="link-btn">Courses</button>
+        <button id="change-source-btn" type="button" class="link-btn">Source</button>
       </div>
 
       <header class="day-header">

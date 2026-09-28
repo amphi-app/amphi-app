@@ -384,9 +384,8 @@ let allEvents = [];
 // ---------------------------------------------------------------------------
 // ZEUS's "Générer un ICS" link (https://zeus.ionis-it.com/api/group/.../ics/...)
 // turned out to work with no login at all — the token in the URL is enough.
-// If the ZEUS server also allows cross-origin browser requests (CORS) to that
-// endpoint, we can fetch it directly and never ask for a manual upload again.
-// If it doesn't allow that, fetch() fails and we fall back to the file input.
+// ZEUS also allows other websites to fetch it (confirmed from a real phone),
+// so the app can refresh itself from the link — no manual downloads.
 
 const URL_STORAGE_KEY = "zeus-schedule-ics-url";
 
@@ -414,6 +413,11 @@ function forgetSavedUrl() {
   }
 }
 
+function showSavedUrlState(hasUrl) {
+  document.getElementById("saved-url-note").hidden = !hasUrl;
+  document.getElementById("refresh-btn").hidden = !hasUrl;
+}
+
 async function loadFromURL(url, { isAutoLoad = false } = {}) {
   showError("");
   try {
@@ -424,7 +428,7 @@ async function loadFromURL(url, { isAutoLoad = false } = {}) {
     }
     const text = await response.text();
     saveUrl(url);
-    document.getElementById("saved-url-note").hidden = false;
+    showSavedUrlState(true);
     loadScheduleFromText(text);
   } catch (err) {
     console.error(err);
@@ -434,9 +438,8 @@ async function loadFromURL(url, { isAutoLoad = false } = {}) {
       return;
     }
     showError(
-      "Couldn't load that link directly — ZEUS's server may not allow this app to fetch it " +
-      "from the browser (a security setting called CORS). Open the link in a new tab to " +
-      "download the file, then choose that file above."
+      "Couldn't load that link. Check you're online and that you copied the whole link " +
+      "from ZEUS (it starts with https://zeus.ionis-it.com/api/group/)."
     );
   }
 }
@@ -594,13 +597,16 @@ document.getElementById("course-search").addEventListener("input", (event) => {
 
 document.getElementById("show-schedule-btn").addEventListener("click", showFilteredSchedule);
 
-document.getElementById("edit-courses-btn").addEventListener("click", () => {
+document.getElementById("edit-courses-btn").addEventListener("click", async () => {
+  // Opened from the saved copy, which only has your own classes — the full
+  // course list lives in the ZEUS file, so fetch it again from the saved link.
+  if (allEvents.length === 0 && loadSavedUrl()) {
+    await loadFromURL(loadSavedUrl());
+  }
   document.getElementById("week-view").hidden = true;
   if (allEvents.length === 0) {
-    // Opened from the saved copy, which only has your own classes — the
-    // full course list lives in the ZEUS file, so that's needed again.
     document.getElementById("upload-section").hidden = false;
-    showError("To change your courses, load your ZEUS file or link again. Courses you've hidden will stay hidden.");
+    showError("To change your courses, load your ZEUS link or file again. Courses you've hidden will stay hidden.");
     return;
   }
   const hidden = isSampleData ? getHiddenCourseNames() : loadHiddenCourses();
@@ -608,9 +614,25 @@ document.getElementById("edit-courses-btn").addEventListener("click", () => {
   updateShowButton();
 });
 
+document.getElementById("refresh-btn").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "Refreshing…";
+  await loadFromURL(loadSavedUrl());
+  button.disabled = false;
+  button.textContent = "Refresh";
+});
+
 document.getElementById("change-source-btn").addEventListener("click", () => {
   document.getElementById("upload-section").hidden = false;
   document.getElementById("week-view").hidden = true;
+  document.getElementById("back-btn").hidden = eventsByDay.size === 0;
+});
+
+document.getElementById("back-btn").addEventListener("click", () => {
+  showError("");
+  document.getElementById("upload-section").hidden = true;
+  document.getElementById("week-view").hidden = false;
 });
 
 document.getElementById("prev-week-btn").addEventListener("click", () => {
@@ -639,7 +661,7 @@ document.getElementById("ics-url-input").addEventListener("keydown", (event) => 
 
 document.getElementById("forget-url-btn").addEventListener("click", () => {
   forgetSavedUrl();
-  document.getElementById("saved-url-note").hidden = true;
+  showSavedUrlState(false);
   document.getElementById("ics-url-input").value = "";
 });
 
@@ -658,7 +680,7 @@ if (mySchedule) {
 const savedUrl = loadSavedUrl();
 if (savedUrl) {
   document.getElementById("ics-url-input").value = savedUrl;
-  document.getElementById("saved-url-note").hidden = false;
+  showSavedUrlState(true);
   loadFromURL(savedUrl, { isAutoLoad: true });
 }
 

@@ -106,12 +106,50 @@ button {
 .file-drop {
   display: block;
   text-align: center;
-  padding: 20px;
-  border: 2px dashed var(--accent);
-  border-radius: 14px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
   cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.back-btn {
+  align-self: flex-start;
+  text-decoration: none;
   color: #93b4ff;
+}
+
+.how-to {
+  background: var(--surface-raised);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.how-to summary {
+  cursor: pointer;
   font-weight: 600;
+  color: #93b4ff;
+}
+
+.how-to ol {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.how-to li + li {
+  margin-top: 6px;
+}
+
+.how-to p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.how-to a {
+  color: #93b4ff;
 }
 
 .file-drop input[type="file"] {

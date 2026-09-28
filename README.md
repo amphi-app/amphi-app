@@ -14,13 +14,12 @@ No login handling, no server, no external services — it's four plain files
    own group (e.g. EPITA → CLASSES PREPARATOIRES → PREPA PARIS → SPE PARIS →
    tick your group), then click **"Générer un ICS"**. ZEUS offers a link and
    a download:
-   - **Copy the link** and paste it into the app's "paste your ZEUS calendar
-     link" box. If ZEUS allows it (see "Still open" below), the app then
-     refreshes itself from that link every time you open it — you never do
-     the ZEUS clicks again.
-   - **Or download the file** and choose it with the upload box. Works
-     everywhere; use **Reload** in the app to load a fresh file when ZEUS
-     changes.
+   - **Copy the link** and paste it into the app. That's it: the app
+     refreshes itself from that link every time you open it (or tap
+     **Refresh**), so you never do the ZEUS clicks again. The app has a
+     built-in "How do I get my link?" guide for classmates.
+   - **Or download the file** and upload it instead. Works too, but you'd
+     have to upload a fresh file yourself whenever ZEUS changes.
 2. **Hide anything you don't take** (optional). The app shows your whole
    group's timetable straight away. If your group has a course you didn't
    choose (an elective, say), tap **Edit courses** and untick it. The app
@@ -120,10 +119,7 @@ Checked against a real 11,519-event export and EPITA's own ZEUS guide:
 - **The ZEUS link needs no login** — opening it in a private window
   downloads the file.
 
-### Still open
+### Confirmed from a real phone
 
-Whether ZEUS allows *other websites'* JavaScript to fetch that link (a
-browser rule called CORS). This can only be checked from a real browser:
-paste your link into the app. If it loads, auto-refresh works; if you get
-the red "Couldn't load that link directly" message, use the file download
-instead — everything else works the same.
+ZEUS lets other websites fetch that link (a browser rule called CORS), so
+this app can load and refresh it directly — no downloading or uploading.
