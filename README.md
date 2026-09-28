@@ -58,7 +58,7 @@ Live at **https://amphi-app.github.io/**.
 5. **Free rooms** (fourth tab) lists rooms with no class booked right now,
    or in 1–3 hours, at Kremlin-Bicêtre or Villejuif, with how long each
    stays that way. Nothing to set up: the room data ships with the app
-   (see "Updating the free-rooms data"). It says "no class booked", not
+   (see "Weekly data update"). It says "no class booked", not
    "free": a room can still be locked or used informally, and the list is
    only as fresh as the last update (about 2% of room bookings change per
    week). Campuses are recognised from room names by `CAMPUS_RULES` in
@@ -91,15 +91,25 @@ for free:
 After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 `amphi-v9`) so installed copies pick up the new version cleanly.
 
-## Updating the free-rooms data (about once a week)
+## Weekly data update (maintainer, about once a week)
 
 1. In ZEUS, open **Groupes**, tick only **EPITA**, click **Générer un ICS**
    and download the file.
-2. In this folder, run `npm run rooms -- path/to/that-file.ics`. It writes
-   `data/rooms.json`, containing only room names and busy times: no course
-   names, groups or people.
-3. Commit and push `data/rooms.json`. Everyone's Rooms tab picks it up the
-   next time they open it with internet.
+2. In this folder, run `npm run data -- path/to/that-file.ics`. It writes:
+   - `data/rooms.json`: which rooms are booked when (Rooms tab).
+   - `data/updates.json`: every entry's latest time and room, by ZEUS ID.
+   Neither contains course names, groups or people.
+3. Commit and push the `data` folder. Everyone's app picks it up the next
+   time it opens with internet: rooms refresh, and each student's own
+   timetable is corrected where ZEUS moved a class or changed its room,
+   with an alert on Home for changes in the next 7 days.
+
+What the weekly update can't do: add classes that are new to a student's
+group (a new ZEUS entry doesn't say which group it's for; the student's own
+fresh file still catches those), and it never overrides a timetable file
+the student loaded after the weekly data was made. Entries that disappear
+are flagged "Not in ZEUS", not deleted, since ZEUS sometimes re-creates an
+entry under a new ID.
 
 ## Working on it
 
@@ -118,11 +128,12 @@ After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 | `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title. Testable too. |
 | `rooms.js` | Works out which rooms have no class booked at a given time, and which campus each room is on. Testable too. |
 | `friends.js` | Packs a timetable into a share link and reads it back; works out a friend's status and when you're both free. Testable too. |
-| `data/rooms.json` | The room busy times everyone's Rooms tab uses, built by `tools/build-rooms.js`. |
+| `updates.js` | Matches a student's classes to the weekly data by ZEUS ID and works out what moved. Testable too. |
+| `data/` | `rooms.json` and `updates.json`, built weekly by `tools/build-data.js` (`npm run data`). |
 | `app.js` | Everything on screen: setup, Home page, timetable, swiping, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
-| `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles), `rooms.js` and `friends.js`. |
+| `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles), `rooms.js`, `friends.js`, `updates.js`, and a check that no two browser scripts clash. |
 | `sample.ics` | The small fake timetable behind "try it with a sample". |
 
 ### How the code flows

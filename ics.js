@@ -68,7 +68,9 @@ function isPlausibleDate(date) {
 
 /**
  * Parses the full text of a .ics file into an array of:
- *   { summary, location, description, start: Date, end: Date }
+ *   { uid, summary, location, description, start: Date, end: Date }
+ * `uid` is ZEUS's permanent ID for the entry; it survives time and room
+ * changes, which is how weekly updates find your classes (see updates.js).
  */
 function parseICS(text) {
   const lines = unfoldLines(text.split(/\r\n|\n|\r/));
@@ -103,6 +105,9 @@ function parseICS(text) {
         break;
       case "DESCRIPTION":
         current.description = unescapeICSText(value).trim();
+        break;
+      case "UID":
+        current.uid = value.trim();
         break;
       case "DTSTART":
         current.start = parseICSDate(value);

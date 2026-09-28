@@ -418,6 +418,87 @@ button {
   margin-bottom: 28px;
 }
 
+/* ---- Timetable changes (Home) ---- */
+.changes-card {
+  margin-bottom: 28px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid #a16207;
+}
+
+.changes-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.changes-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.changes-card > .hint {
+  margin: 4px 0 12px;
+}
+
+.change-row {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+}
+
+.change-tag {
+  flex-shrink: 0;
+  min-width: 72px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+  background: #3a2a05;
+  color: #fbbf24;
+}
+
+.change-tag.change-missing {
+  background: #3b1515;
+  color: #fca5a5;
+}
+
+.change-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.change-title {
+  font-weight: 700;
+}
+
+.change-detail {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.change-badge {
+  background: rgba(0, 0, 0, 0.35);
+  color: #fde68a;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .kind-badge {
   flex-shrink: 0;
   padding: 4px 12px;

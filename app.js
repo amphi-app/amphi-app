@@ -278,6 +278,7 @@ function renderCard(event) {
       <div class="class-card-top">
         <h3 class="class-title">${escapeHTML(event.summary || "Untitled class")}</h3>
         ${type.kind !== "course" ? `<span class="class-badge">${KIND_LABELS[type.kind]}</span>` : ""}
+        ${changeBadge(event)}
       </div>
       ${event.description ? `<p class="class-note">${escapeHTML(event.description)}</p>` : ""}
       <div class="chips">
@@ -411,6 +412,7 @@ const COMING_UP_LIMIT = 3;
 
 function renderHome(updatedAt) {
   renderProfile();
+  renderChanges();
   const entries = summarizeCourses(shownEvents);
   const courses = entries.filter((entry) => classify(entry.name).kind === "course");
   const comingUp = entries
@@ -496,9 +498,9 @@ pager.addEventListener("scroll", () => {
 
 const SCHEDULE_STORAGE_KEY = "zeus-schedule-my-events";
 
-function saveMySchedule(events) {
+function saveMySchedule(events, savedAt = new Date()) {
   try {
-    localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify({ savedAt: new Date(), events }));
+    localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify({ savedAt, events }));
   } catch {
     // Ignore — the app still works for this session, it just won't remember.
   }
@@ -1082,6 +1084,152 @@ document.getElementById("add-friend-btn").addEventListener("click", async () => 
 });
 
 // ---------------------------------------------------------------------------
+// STEP 8: Weekly updates and change alerts
+// ---------------------------------------------------------------------------
+// data/updates.json (built weekly from the whole-school file) holds every
+// entry's latest time and room, by ZEUS ID. If it's newer than your copy,
+// your classes are corrected, and changes in the next 7 days are listed on
+// Home until you dismiss them. The matching logic lives in updates.js.
+
+const UPDATES_DATA_URL = "data/updates.json";
+const CHANGES_STORAGE_KEY = "zeus-changes";
+const UID_HINT_KEY = "zeus-uid-hint-shown";
+
+const CHANGE_LABELS = { moved: "Moved", room: "New room", missing: "Check" };
+
+function loadAlerts() {
+  try {
+    return JSON.parse(localStorage.getItem(CHANGES_STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAlerts(alerts) {
+  try {
+    localStorage.setItem(CHANGES_STORAGE_KEY, JSON.stringify(alerts));
+  } catch {
+    // Ignore — the alerts just won't survive a reload.
+  }
+}
+
+/** What an alert needs, stored plainly so it survives a reload. */
+function toAlert(change) {
+  return {
+    type: change.type,
+    summary: change.summary || "Class",
+    beforeStart: change.before.start.toISOString(),
+    afterStart: change.after.start.toISOString(),
+    beforeLocation: change.before.location || "",
+    afterLocation: change.after.location || "",
+  };
+}
+
+async function applyWeeklyUpdates() {
+  const saved = loadMySchedule();
+  if (!saved) return;
+  if (!saved.events.some((event) => event.uid)) {
+    // Saved before the app kept ZEUS IDs: a fresh file turns updates on.
+    try {
+      if (!localStorage.getItem(UID_HINT_KEY)) {
+        localStorage.setItem(UID_HINT_KEY, "1");
+        showToast("Amphi can now keep your timetable up to date for you. Load your ZEUS file once more to turn it on.");
+      }
+    } catch { /* not important */ }
+    return;
+  }
+
+  let updates;
+  try {
+    const response = await fetch(UPDATES_DATA_URL, { cache: "no-cache" });
+    if (!response.ok) return;
+    updates = await response.json();
+  } catch {
+    return; // offline: try again next time
+  }
+  const exportedAt = new Date(updates.exportedAt);
+  // Never let older data undo a timetable file the student loaded later.
+  if (exportedAt <= saved.savedAt) return;
+
+  const { events, changes } = applyUpdates(saved.events, updates);
+  for (const change of changes) {
+    if (change.type !== "missing") change.after.changed = change.type;
+  }
+  saveMySchedule(events, exportedAt);
+
+  const fresh = upcomingChanges(changes).map(toAlert);
+  if (fresh.length > 0) {
+    const key = (alert) => `${alert.type}|${alert.summary}|${alert.beforeStart}`;
+    const known = new Set(fresh.map(key));
+    saveAlerts([...loadAlerts().filter((alert) => !known.has(key(alert))), ...fresh]);
+  }
+  // Refresh the screen only if the timetable is open, not mid-setup.
+  if (!document.getElementById("week-view").hidden) showWeekView(events, exportedAt);
+}
+
+function roomsLabel(location) {
+  const rooms = roomNames(location);
+  if (rooms.length === 0) return "no room";
+  return rooms.length > 3 ? `${rooms.length} rooms` : rooms.join(", ");
+}
+
+function alertDetail(alert) {
+  const before = new Date(alert.beforeStart);
+  const after = new Date(alert.afterStart);
+  const when = (date) => `${nextDayFormatter.format(date)} · ${timeFormatter.format(date)}`;
+  if (alert.type === "moved") {
+    const sameDay = parisDateKey(before) === parisDateKey(after);
+    return `${when(before)} → ${sameDay ? timeFormatter.format(after) : when(after)}`;
+  }
+  if (alert.type === "room") {
+    const from = roomsLabel(alert.beforeLocation);
+    const to = roomsLabel(alert.afterLocation);
+    return `${when(after)} · ${from === to ? "room list updated" : `${from} → ${to}`}`;
+  }
+  return `${when(before)} · no longer in ZEUS, check before going`;
+}
+
+function renderChanges() {
+  const now = new Date();
+  // Drop alerts about things that have already happened.
+  const alerts = loadAlerts().filter((alert) => new Date(alert.afterStart) >= now || new Date(alert.beforeStart) >= now);
+  const card = document.getElementById("changes-card");
+  card.hidden = alerts.length === 0;
+  const list = document.getElementById("changes-list");
+  list.innerHTML = "";
+  for (const alert of alerts.sort((a, b) => new Date(a.afterStart) - new Date(b.afterStart))) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "change-row";
+    row.innerHTML = `
+      <span class="change-tag change-${alert.type}">${CHANGE_LABELS[alert.type]}</span>
+      <span class="change-text">
+        <span class="change-title">${escapeHTML(alert.summary)}</span>
+        <span class="change-detail">${escapeHTML(alertDetail(alert))}</span>
+      </span>
+    `;
+    row.addEventListener("click", () => {
+      selectedDay = parisDateKey(new Date(alert.afterStart));
+      renderWeek();
+      goToPage(1);
+    });
+    list.appendChild(row);
+  }
+}
+
+/** A small label on timetable cards that ZEUS changed since you loaded your file. */
+function changeBadge(event) {
+  if (event.missing) return `<span class="change-badge">Not in ZEUS</span>`;
+  if (event.changed) return `<span class="change-badge">${CHANGE_LABELS[event.changed]}</span>`;
+  return "";
+}
+
+document.getElementById("dismiss-changes-btn").addEventListener("click", () => {
+  saveAlerts([]);
+  renderChanges();
+});
+
+// ---------------------------------------------------------------------------
 // Wiring: connect the HTML elements to the functions above
 // ---------------------------------------------------------------------------
 
@@ -1226,6 +1374,7 @@ if (mySchedule) {
   showWeekView(mySchedule.events, mySchedule.savedAt);
 }
 handleIncomingFriendLink();
+applyWeeklyUpdates();
 
 // 2. If you saved a ZEUS link, refresh from it in the background — this is
 //    what gets us from "six ZEUS clicks" to zero.
