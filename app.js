@@ -557,8 +557,9 @@ let allEvents = [];
 // ---------------------------------------------------------------------------
 // ZEUS's "Générer un ICS" link (https://zeus.ionis-it.com/api/group/.../ics/...)
 // turned out to work with no login at all — the token in the URL is enough.
-// ZEUS also allows other websites to fetch it (confirmed from a real phone),
-// so the app can refresh itself from the link — no manual downloads.
+// But ZEUS doesn't currently allow other websites to read it (no CORS header
+// for amphi-app.github.io), so fetch() fails and students upload the file
+// instead. This code starts working as-is if ZEUS allows Amphi.
 
 const URL_STORAGE_KEY = "zeus-schedule-ics-url";
 
@@ -611,10 +612,9 @@ async function loadFromURL(url, { isAutoLoad = false } = {}) {
       return;
     }
     showError(
-      "Couldn't load that link. Check you're online and that you copied the whole link " +
-      "from ZEUS (it starts with https://zeus.ionis-it.com/api/group/). If the link opens " +
-      "fine in your browser, ZEUS isn't letting Amphi read it directly yet: download the " +
-      "file from the link and use \"Or upload a downloaded .ics file\" below."
+      "Couldn't load that link: ZEUS doesn't let Amphi read links directly yet. Open the " +
+      "link in your browser to download the file, then choose it with \"Choose your ZEUS " +
+      "timetable file\" above."
     );
   }
 }

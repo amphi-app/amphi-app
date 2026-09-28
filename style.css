@@ -117,12 +117,20 @@ button {
 .file-drop {
   display: block;
   text-align: center;
-  padding: 14px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+  padding: 20px;
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
   cursor: pointer;
-  color: var(--muted);
-  font-size: 0.9rem;
+  color: #93b4ff;
+  font-weight: 600;
+}
+
+.link-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
 
 .danger-link {
