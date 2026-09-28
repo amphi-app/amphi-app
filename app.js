@@ -612,7 +612,9 @@ async function loadFromURL(url, { isAutoLoad = false } = {}) {
     }
     showError(
       "Couldn't load that link. Check you're online and that you copied the whole link " +
-      "from ZEUS (it starts with https://zeus.ionis-it.com/api/group/)."
+      "from ZEUS (it starts with https://zeus.ionis-it.com/api/group/). If the link opens " +
+      "fine in your browser, ZEUS isn't letting Amphi read it directly yet: download the " +
+      "file from the link and use \"Or upload a downloaded .ics file\" below."
     );
   }
 }
