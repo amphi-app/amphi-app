@@ -8,7 +8,8 @@
 */
 
 // Which campus each room is on, decided from its name. Rooms that match no
-// rule are listed under "Other rooms". Edit this table to fix a campus.
+// rule are left out: the whole-school file also covers other campuses and
+// sites. To add a campus or fix a room, edit this table.
 const CAMPUS_RULES = [
   { campus: "Kremlin-Bicêtre", pattern: /^KB|\bKB\d|\(KB\d\)/i },
   // A/B/C followed by a number ("A202", "C04 (Amphithéâtre)"), so "Alphago"
@@ -44,17 +45,19 @@ function buildOccupancy(events, from, until) {
     for (const room of roomNames(event.location)) counts.set(room, (counts.get(room) || 0) + 1);
   }
 
+  const isListed = (room) =>
+    !NOT_A_ROOM.test(room) && counts.get(room) >= MIN_BOOKINGS && campusOf(room) !== OTHER_CAMPUS;
+
   const occupancy = {};
   for (const event of events) {
     if (event.end <= from || event.start >= until) continue;
     for (const room of roomNames(event.location)) {
-      if (NOT_A_ROOM.test(room) || counts.get(room) < MIN_BOOKINGS) continue;
-      (occupancy[room] ||= []).push([toMinute(event.start), toMinute(event.end)]);
+      if (isListed(room)) (occupancy[room] ||= []).push([toMinute(event.start), toMinute(event.end)]);
     }
   }
   // Rooms that are real but have nothing booked in the window are free throughout.
-  for (const [room, count] of counts) {
-    if (!NOT_A_ROOM.test(room) && count >= MIN_BOOKINGS) occupancy[room] ||= [];
+  for (const room of counts.keys()) {
+    if (isListed(room)) occupancy[room] ||= [];
   }
   for (const room of Object.keys(occupancy)) occupancy[room] = mergeIntervals(occupancy[room]);
   return occupancy;

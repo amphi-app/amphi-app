@@ -840,9 +840,10 @@ function renderRooms() {
   updatedLabel.classList.toggle("is-stale", updated.days >= 7);
 
   const at = new Date(Date.now() + roomsHoursAhead * 3600000);
-  // Real campuses alphabetically, then "Other rooms" last.
+  // Filtering here too, in case this data was saved before unplaced rooms were dropped.
   const campuses = [...new Set(Object.keys(roomData.occupancy).map(campusOf))]
-    .sort((a, b) => (a === OTHER_CAMPUS) - (b === OTHER_CAMPUS) || a.localeCompare(b));
+    .filter((campus) => campus !== OTHER_CAMPUS)
+    .sort();
   if (!campuses.includes(roomsCampus)) roomsCampus = campuses[0];
 
   renderChips("campus-chips", campuses.map((c) => ({ value: c, label: c })), roomsCampus, (campus) => {
@@ -876,9 +877,6 @@ function renderRooms() {
   const notes = [];
   if (weekday === "Sat" || weekday === "Sun" || hour < 8 || hour >= 20) {
     notes.push("Outside usual hours: buildings may be closed. ZEUS doesn't list opening hours.");
-  }
-  if (roomsCampus === OTHER_CAMPUS) {
-    notes.push("These rooms aren't sorted by campus yet.");
   }
   const note = document.getElementById("rooms-note");
   note.textContent = notes.join(" ");

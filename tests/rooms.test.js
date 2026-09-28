@@ -40,6 +40,12 @@ test("rooms nobody has placed yet stay under Other rooms", () => {
   }
 });
 
+test("rooms on no known campus are left out of the list", () => {
+  const events = schoolWith([]);
+  for (let i = 0; i < 6; i++) events.push({ summary: "x", location: "Turing", start: at("08:00"), end: at("09:00") });
+  assert.ok(!("Turing" in buildOccupancy(events, ...window)));
+});
+
 test("joins overlapping bookings", () => {
   assert.deepEqual(mergeIntervals([[10, 20], [5, 12], [30, 40]]), [[5, 20], [30, 40]]);
 });

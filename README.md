@@ -51,8 +51,10 @@ Live at **https://amphi-app.github.io/**.
    with how long each stays that way. It says "no class booked", not
    "free": a room can still be locked or used informally, and the list is
    only as fresh as the file (about 2% of room bookings change per week).
-   Campuses are recognised from room names in `CAMPUS_RULES` in `rooms.js`;
-   rooms that match no rule are listed under "Other rooms".
+   Only Kremlin-Bicêtre and Villejuif rooms are listed, recognised from
+   their names by `CAMPUS_RULES` in `rooms.js`; the whole-school file also
+   covers other campuses and sites, which are left out until someone
+   confirms where they are.
 5. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
    full-screen like an app, and works without internet.
