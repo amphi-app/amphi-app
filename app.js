@@ -751,67 +751,41 @@ function loadScheduleFromText(text, { isSample = false } = {}) {
 // ---------------------------------------------------------------------------
 // STEP 6: Free rooms
 // ---------------------------------------------------------------------------
-// Uses the whole-school ZEUS file, which lists every room booking. Only a
-// small summary is saved (which room is booked when, for the next 8 weeks),
-// not the file itself. The room logic lives in rooms.js.
+// Room bookings come from data/rooms.json, which ships with the app: the
+// maintainer builds it from the whole-school ZEUS file with
+// `npm run rooms` (tools/build-rooms.js). It holds only room names and busy
+// times. Being on Amphi's own site, the browser lets the app read it, and
+// the service worker keeps a copy for offline use. Room logic: rooms.js.
 
-const ROOMS_STORAGE_KEY = "zeus-rooms";
+const ROOMS_DATA_URL = "data/rooms.json";
 const ROOMS_CAMPUS_KEY = "zeus-rooms-campus";
-const ROOMS_WEEKS = 8;
 const TIME_CHOICES = [0, 1, 2, 3]; // hours from now
 
-let roomData = null; // { savedAt: Date, occupancy }
+let roomData = null; // { exportedAt: Date, occupancy }
+let roomsLoadFailed = false;
 let roomsHoursAhead = 0;
 let roomsCampus = "Kremlin-Bicêtre";
 
 function loadRoomSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem(ROOMS_STORAGE_KEY));
-    if (saved) roomData = { savedAt: new Date(saved.savedAt), occupancy: saved.occupancy };
     roomsCampus = localStorage.getItem(ROOMS_CAMPUS_KEY) || roomsCampus;
   } catch {
-    // Nothing saved, or storage unavailable: show the setup instead.
+    // Storage unavailable: start on the default campus.
   }
 }
 
-function saveRoomData() {
+async function loadRoomData() {
   try {
-    localStorage.setItem(ROOMS_STORAGE_KEY, JSON.stringify(roomData));
-  } catch {
-    // Ignore — the app still works for this session, it just won't remember.
-  }
-}
-
-function loadRoomsFromText(text) {
-  try {
-    const events = parseICS(text);
-    // A group's own file only has that group's bookings, which would make
-    // almost every room look free.
-    if (getUniqueCourses(events).length <= WHOLE_SCHOOL_COURSE_COUNT) {
-      showError("That looks like one group's file. Free rooms needs the whole-school file: in ZEUS, tick only EPITA, then Générer un ICS.");
-      return;
-    }
-    const now = new Date();
-    const from = new Date(now.getTime() - 86400000);
-    const until = new Date(now.getTime() + ROOMS_WEEKS * 7 * 86400000);
-    roomData = { savedAt: now, occupancy: buildOccupancy(events, from, until) };
-    saveRoomData();
-    showError("");
-    renderRooms();
+    // "no-cache" still uses the saved copy, but checks for a newer one first.
+    const response = await fetch(ROOMS_DATA_URL, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    roomData = { exportedAt: new Date(data.exportedAt), occupancy: data.occupancy };
   } catch (err) {
-    showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
     console.error(err);
+    roomsLoadFailed = !roomData;
   }
-}
-
-function readRoomsFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => loadRoomsFromText(reader.result);
-  reader.onerror = () => showError("Couldn't read that file.");
-  reader.readAsText(file);
-  event.target.value = ""; // so choosing the same file again still triggers
+  renderRooms();
 }
 
 /** A row of toggle buttons; `onPick` runs with the chosen value. */
@@ -830,11 +804,15 @@ function renderChips(containerId, options, selected, onPick) {
 }
 
 function renderRooms() {
-  document.getElementById("rooms-setup").hidden = Boolean(roomData);
+  const status = document.getElementById("rooms-status");
+  status.hidden = Boolean(roomData);
+  status.textContent = roomsLoadFailed
+    ? "Couldn't load room data. Connect to the internet and open this tab again."
+    : "Loading room data…";
   document.getElementById("rooms-view").hidden = !roomData;
   if (!roomData) return;
 
-  const updated = describeUpdated(roomData.savedAt);
+  const updated = describeUpdated(roomData.exportedAt);
   const updatedLabel = document.getElementById("rooms-updated");
   updatedLabel.textContent = `ZEUS data: ${updated.text.toLowerCase()}`;
   updatedLabel.classList.toggle("is-stale", updated.days >= 7);
@@ -900,8 +878,6 @@ function renderRooms() {
   }
 }
 
-document.getElementById("rooms-input").addEventListener("change", readRoomsFile);
-document.getElementById("rooms-reload-input").addEventListener("change", readRoomsFile);
 
 // ---------------------------------------------------------------------------
 // Wiring: connect the HTML elements to the functions above
@@ -1042,7 +1018,7 @@ document.getElementById("forget-url-btn").addEventListener("click", () => {
 // 1. Show the saved copy of your schedule straight away (works offline),
 //    and any saved free-rooms data.
 loadRoomSettings();
-renderRooms();
+loadRoomData();
 const mySchedule = loadMySchedule();
 if (mySchedule) {
   showWeekView(mySchedule.events, mySchedule.savedAt);

@@ -3,6 +3,7 @@
   "private": true,
   "description": "An English, mobile-first viewer for EPITA's ZEUS timetable.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "rooms": "node tools/build-rooms.js"
   }
 }

@@ -45,16 +45,14 @@ Live at **https://amphi-app.github.io/**.
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.
-4. **Free rooms** (third tab). Load the **whole-school** ZEUS file once (in
-   ZEUS, tick only EPITA, then Générer un ICS and download it): Amphi then
-   lists rooms with no class booked right now, or in 1–3 hours, by campus,
-   with how long each stays that way. It says "no class booked", not
+4. **Free rooms** (third tab) lists rooms with no class booked right now,
+   or in 1–3 hours, at Kremlin-Bicêtre or Villejuif, with how long each
+   stays that way. Nothing to set up: the room data ships with the app
+   (see "Updating the free-rooms data"). It says "no class booked", not
    "free": a room can still be locked or used informally, and the list is
-   only as fresh as the file (about 2% of room bookings change per week).
-   Only Kremlin-Bicêtre and Villejuif rooms are listed, recognised from
-   their names by `CAMPUS_RULES` in `rooms.js`; the whole-school file also
-   covers other campuses and sites, which are left out until someone
-   confirms where they are.
+   only as fresh as the last update (about 2% of room bookings change per
+   week). Campuses are recognised from room names by `CAMPUS_RULES` in
+   `rooms.js`; rooms on other campuses and sites are left out.
 5. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
    full-screen like an app, and works without internet.
@@ -83,6 +81,16 @@ for free:
 After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 `amphi-v9`) so installed copies pick up the new version cleanly.
 
+## Updating the free-rooms data (about once a week)
+
+1. In ZEUS, open **Groupes**, tick only **EPITA**, click **Générer un ICS**
+   and download the file.
+2. In this folder, run `npm run rooms -- path/to/that-file.ics`. It writes
+   `data/rooms.json`, containing only room names and busy times: no course
+   names, groups or people.
+3. Commit and push `data/rooms.json`. Everyone's Rooms tab picks it up the
+   next time they open it with internet.
+
 ## Working on it
 
 - **Run it locally:** double-click `index.html`. Everything works except
@@ -99,6 +107,7 @@ After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 | `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
 | `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title. Testable too. |
 | `rooms.js` | Works out which rooms have no class booked at a given time, and which campus each room is on. Testable too. |
+| `data/rooms.json` | The room busy times everyone's Rooms tab uses, built by `tools/build-rooms.js`. |
 | `app.js` | Everything on screen: setup, Home page, timetable, swiping, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |

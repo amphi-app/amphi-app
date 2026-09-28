@@ -141,25 +141,11 @@
           <p id="rooms-subtitle">Rooms with no class booked in ZEUS</p>
         </header>
 
-        <div id="rooms-setup" class="panel">
-          <p>Free rooms needs the <strong>whole-school</strong> timetable, the only ZEUS file that lists every room booking.</p>
-          <ol class="setup-steps">
-            <li>In ZEUS, open <strong>Groupes</strong> and tick only <strong>EPITA</strong>, without opening the tree.</li>
-            <li>Click <strong>Générer un ICS</strong> and download the file.</li>
-            <li>Choose it here. It's a big file, so give it a second.</li>
-          </ol>
-          <label class="file-drop" for="rooms-input">
-            <span>Choose the whole-school file (.ics)</span>
-            <input type="file" id="rooms-input" accept=".ics" />
-          </label>
-        </div>
+        <p id="rooms-status" class="empty-day">Loading room data…</p>
 
         <div id="rooms-view" hidden>
           <div class="toolbar">
             <span id="rooms-updated"></span>
-            <label class="link-btn" for="rooms-reload-input">Load a newer file
-              <input type="file" id="rooms-reload-input" class="hidden-file" accept=".ics" />
-            </label>
           </div>
           <div class="chip-row" id="campus-chips" role="group" aria-label="Campus"></div>
           <div class="chip-row" id="time-chips" role="group" aria-label="Time"></div>
