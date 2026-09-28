@@ -45,7 +45,17 @@ Live at **https://amphi-app.github.io/**.
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.
-4. **Free rooms** (third tab) lists rooms with no class booked right now,
+4. **Friends** (third tab) shows where each friend's timetable says they
+   are: in class (which one, until when), free until their next class, or
+   done for the day, plus when you're both free today. Tap **Share my
+   timetable** to send a link; a friend who opens it (or pastes it into
+   their Friends tab) adds you. The link carries class names and times for
+   the rest of the semester, never rooms, and travels after the `#` of the
+   address, which browsers never send to any server. Friends are added only
+   from links they sent you, and each shows when it was shared (yellow after
+   two weeks, as a hint to share again). On iPhone, links open in Safari,
+   not the installed app, so paste them into the Friends tab instead.
+5. **Free rooms** (fourth tab) lists rooms with no class booked right now,
    or in 1–3 hours, at Kremlin-Bicêtre or Villejuif, with how long each
    stays that way. Nothing to set up: the room data ships with the app
    (see "Updating the free-rooms data"). It says "no class booked", not
@@ -53,7 +63,7 @@ Live at **https://amphi-app.github.io/**.
    only as fresh as the last update (about 2% of room bookings change per
    week). Campuses are recognised from room names by `CAMPUS_RULES` in
    `rooms.js`; rooms on other campuses and sites are left out.
-5. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
+6. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
    full-screen like an app, and works without internet.
 
@@ -107,11 +117,12 @@ After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 | `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
 | `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title. Testable too. |
 | `rooms.js` | Works out which rooms have no class booked at a given time, and which campus each room is on. Testable too. |
+| `friends.js` | Packs a timetable into a share link and reads it back; works out a friend's status and when you're both free. Testable too. |
 | `data/rooms.json` | The room busy times everyone's Rooms tab uses, built by `tools/build-rooms.js`. |
 | `app.js` | Everything on screen: setup, Home page, timetable, swiping, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
-| `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles) and `rooms.js`. |
+| `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles), `rooms.js` and `friends.js`. |
 | `sample.ics` | The small fake timetable behind "try it with a sample". |
 
 ### How the code flows

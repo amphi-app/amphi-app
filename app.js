@@ -303,6 +303,7 @@ function showWeekView(events, updatedAt) {
   document.getElementById("course-picker").hidden = true;
   document.getElementById("week-view").hidden = false;
   renderWeek();
+  renderFriends(); // "both free" depends on your own timetable
 }
 
 /** "Updated today" / "Updated 3 days ago", so you know how fresh this is. */
@@ -470,7 +471,8 @@ function goToPage(index) {
   pager.scrollTo({ left: index * pager.clientWidth, behavior: "smooth" });
 }
 
-const ROOMS_PAGE = 2;
+const FRIENDS_PAGE = 2;
+const ROOMS_PAGE = 3;
 let currentPage = 0;
 
 pager.addEventListener("scroll", () => {
@@ -481,7 +483,8 @@ pager.addEventListener("scroll", () => {
     if (Number(button.dataset.page) === page) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   }
-  // Recompute free rooms on arrival, so "Now" really means now.
+  // Recompute on arrival, so "now" really means now.
+  if (page === FRIENDS_PAGE) renderFriends();
   if (page === ROOMS_PAGE) renderRooms();
 }, { passive: true });
 
@@ -521,6 +524,13 @@ function showError(message) {
   const errorEl = document.getElementById("error-message");
   errorEl.textContent = message;
   errorEl.hidden = !message;
+  errorEl.classList.remove("is-info");
+}
+
+/** Same floating message as errors, in green, for good news. */
+function showToast(message) {
+  showError(message);
+  document.getElementById("error-message").classList.add("is-info");
 }
 
 // ---------------------------------------------------------------------------
@@ -880,6 +890,198 @@ function renderRooms() {
 
 
 // ---------------------------------------------------------------------------
+// STEP 7: Friends
+// ---------------------------------------------------------------------------
+// Friends share their timetable with a link (see friends.js). Each friend is
+// kept only on this phone, as the copy they sent; nothing goes to a server.
+
+const FRIENDS_STORAGE_KEY = "zeus-friends";
+const STALE_SHARE_DAYS = 14;
+
+function loadFriends() {
+  try {
+    return (JSON.parse(localStorage.getItem(FRIENDS_STORAGE_KEY)) || []).map((friend) => ({
+      name: friend.name,
+      sharedAt: new Date(friend.sharedAt),
+      events: friend.events.map((e) => ({ summary: e.summary, start: new Date(e.start), end: new Date(e.end) })),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveFriends(friends) {
+  try {
+    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(friends));
+  } catch {
+    showError("Couldn't save your friends on this phone (storage is full or turned off).");
+  }
+}
+
+/** Adds a friend, or replaces them if they've shared again. */
+async function addFriendFromCode(code, { ask }) {
+  let friend;
+  try {
+    friend = await decodeShare(code);
+  } catch (err) {
+    console.error(err);
+    showError("That isn't a working Amphi friend link. Ask your friend to share it again.");
+    return false;
+  }
+  if (ask && !confirm(`Add ${friend.name} to your friends? You'll see where their timetable says they are.`)) return false;
+
+  const friends = loadFriends().filter((f) => f.name.toLowerCase() !== friend.name.toLowerCase());
+  friends.push(friend);
+  saveFriends(friends);
+  renderFriends();
+  const appOpen = !document.getElementById("week-view").hidden;
+  showToast(appOpen
+    ? `${friend.name} is now in your friends.`
+    : `${friend.name} is now in your friends. Set up Amphi below to see where they are.`);
+  return true;
+}
+
+// Paris clock times as real moments (e.g. 08:00 Paris today), which depend
+// on whether France is on summer time that day.
+const offsetFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: PARIS, timeZoneName: "shortOffset" });
+
+function parisOffsetMinutes(date) {
+  const zone = offsetFormatter.formatToParts(date).find((part) => part.type === "timeZoneName").value;
+  const match = zone.match(/GMT([+-])(\d+)(?::(\d+))?/);
+  if (!match) return 0; // plain "GMT"
+  return (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3] || 0));
+}
+
+function parisTime(dayKey, hour) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const asIfUTC = Date.UTC(year, month - 1, day, hour);
+  return new Date(asIfUTC - parisOffsetMinutes(new Date(asIfUTC)) * 60000);
+}
+
+function describeShared(sharedAt) {
+  const { text, days } = describeUpdated(sharedAt);
+  return { text: text.replace("Updated", "Shared"), stale: days >= STALE_SHARE_DAYS };
+}
+
+function friendStatusText(friend, now, endOfToday) {
+  const titleCounts = countTitles(friend.events);
+  const status = statusAt(friend.events, now, endOfToday);
+  if (status.state === "class") {
+    if (kindOf(status.event.summary, titleCounts.get(status.event.summary)) === "dayoff") {
+      return { text: "Day off", tone: "free" };
+    }
+    return { text: `In class · ${status.event.summary} · until ${timeFormatter.format(status.event.end)}`, tone: "busy" };
+  }
+  if (status.state === "free") return { text: `Free until ${timeFormatter.format(status.until)}`, tone: "free" };
+  return { text: "No more classes today", tone: "done" };
+}
+
+function renderFriends() {
+  const list = document.getElementById("friends-list");
+  const friends = loadFriends().sort((a, b) => a.name.localeCompare(b.name));
+  list.innerHTML = "";
+
+  if (friends.length === 0) {
+    list.innerHTML = `<p class="empty-day">No friends yet. Share your timetable with a friend in
+      another section, and ask them to share theirs.</p>`;
+    return;
+  }
+
+  const now = new Date();
+  const today = parisDateKey(now);
+  const endOfToday = parisTime(addDays(today, 1), 0);
+  // "Both free" looks at usual daytime hours, from now until 20:00.
+  const togetherFrom = new Date(Math.max(now, parisTime(today, 8)));
+  const togetherUntil = parisTime(today, 20);
+
+  for (const friend of friends) {
+    const status = friendStatusText(friend, now, endOfToday);
+    const together = togetherFrom < togetherUntil
+      ? firstFreeTogether(shownEvents, friend.events, togetherFrom, togetherUntil)
+      : null;
+    const shared = describeShared(friend.sharedAt);
+    const initials = friend.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+
+    const row = document.createElement("div");
+    row.className = "friend-row";
+    row.innerHTML = `
+      <div class="avatar small" aria-hidden="true">${escapeHTML(initials)}</div>
+      <div class="friend-info">
+        <p class="friend-name">${escapeHTML(friend.name)}</p>
+        <p class="friend-status tone-${status.tone}">${escapeHTML(status.text)}</p>
+        ${together ? `<p class="friend-together">Both free today ${timeFormatter.format(together.start)}–${timeFormatter.format(together.end)}</p>` : ""}
+        <p class="friend-age${shared.stale ? " is-stale" : ""}">${shared.text}${shared.stale ? " · ask them to share again" : ""}</p>
+      </div>
+    `;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "icon-btn remove-friend";
+    remove.setAttribute("aria-label", `Remove ${friend.name}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      if (!confirm(`Remove ${friend.name} from your friends?`)) return;
+      saveFriends(loadFriends().filter((f) => f.name !== friend.name));
+      renderFriends();
+    });
+    row.appendChild(remove);
+    list.appendChild(row);
+  }
+}
+
+async function shareMyTimetable() {
+  if (isSampleData || shownEvents.length === 0) {
+    showError("Load your own ZEUS timetable first, then share it.");
+    return;
+  }
+  if (!nameFromLogin(loadLogin())) {
+    const login = prompt("Your EPITA login, so friends know it's you (e.g. firstname.lastname):", "");
+    if (!login || !nameFromLogin(login.trim())) return;
+    saveLogin(login.trim().toLowerCase());
+    renderProfile();
+  }
+  const name = nameFromLogin(loadLogin());
+  const code = await encodeShare(packTimetable(name, shownEvents, new Date()));
+  const url = `${location.origin}${location.pathname}#friend=${code}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Amphi", text: `${name} shared their timetable with you on Amphi`, url });
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return; // they closed the share sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied. Send it to a friend.");
+  } catch {
+    prompt("Copy this link and send it to a friend:", url);
+  }
+}
+
+/** A friend link opened directly (…/#friend=…) adds that friend. */
+async function handleIncomingFriendLink() {
+  const code = shareCodeFrom(location.hash);
+  if (!code) return;
+  // Take the code out of the address so a reload doesn't ask again.
+  history.replaceState(null, "", location.pathname + location.search);
+  const added = await addFriendFromCode(code, { ask: true });
+  if (added && !document.getElementById("week-view").hidden) goToPage(FRIENDS_PAGE);
+}
+
+document.getElementById("share-btn").addEventListener("click", shareMyTimetable);
+
+document.getElementById("add-friend-btn").addEventListener("click", async () => {
+  const input = document.getElementById("friend-link-input");
+  const code = shareCodeFrom(input.value);
+  if (!code) {
+    showError("Paste the whole link your friend sent (it contains #friend=).");
+    return;
+  }
+  if (await addFriendFromCode(code, { ask: false })) input.value = "";
+});
+
+// ---------------------------------------------------------------------------
 // Wiring: connect the HTML elements to the functions above
 // ---------------------------------------------------------------------------
 
@@ -1023,6 +1225,7 @@ const mySchedule = loadMySchedule();
 if (mySchedule) {
   showWeekView(mySchedule.events, mySchedule.savedAt);
 }
+handleIncomingFriendLink();
 
 // 2. If you saved a ZEUS link, refresh from it in the background — this is
 //    what gets us from "six ZEUS clicks" to zero.

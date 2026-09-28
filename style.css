@@ -443,6 +443,112 @@ button {
   font-size: 0.75rem;
 }
 
+.error.is-info {
+  background: #10281a;
+  color: #86efac;
+  border-color: #166534;
+}
+
+/* ---- Friends page ---- */
+.friend-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 22px;
+}
+
+#friend-link-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+#add-friend-btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--surface-raised);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.friend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 10px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.avatar.small {
+  width: 44px;
+  height: 44px;
+  font-size: 1rem;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.friend-info p {
+  margin: 0;
+}
+
+.friend-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.friend-status {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.friend-status.tone-busy {
+  color: #93b4ff;
+}
+
+.friend-status.tone-free {
+  color: var(--today);
+}
+
+.friend-status.tone-done {
+  color: var(--muted);
+}
+
+.friend-together {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.friend-age {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.friend-age.is-stale {
+  color: #fbbf24;
+}
+
+.remove-friend {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
 /* ---- Free rooms page ---- */
 .chip-row {
   display: flex;
