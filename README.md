@@ -1,11 +1,12 @@
-# ZEUS Timetable
+# Amphi
 
 Your EPITA ZEUS timetable, in English, on your phone. Load your group's
 calendar export from ZEUS once, and after that the app opens straight to
 your next class and works offline.
 
-No login handling, no server, no external services — it's four plain files
-(`index.html`, `style.css`, `ics.js`, `app.js`) that run in any browser.
+Amphi is an unofficial student project. No login handling, no server, no
+external services: it's a handful of plain files that run in any browser.
+Live at **https://amphi-app.github.io/**.
 
 ## Using it
 
@@ -61,13 +62,15 @@ for free:
 1. The repo must be **public** for free Pages — or keep it private with
    GitHub Pro, which is free for students through the GitHub Student
    Developer Pack. Nothing secret is in the repo either way.
-2. Repo **Settings → Pages → Source: "Deploy from a branch"**, pick the
-   branch this code is on and the **/ (root)** folder, Save.
-3. After a minute the site is live at
-   `https://<your-username>.github.io/Project-EPI/`.
+2. Repo **Settings → Pages → Source: "Deploy from a branch"**, pick
+   `main` and the **/ (root)** folder, Save.
+3. After a minute the site is live. This repo lives in the `amphi-app`
+   organisation and is named `amphi-app.github.io`, so its address is
+   `https://amphi-app.github.io/` (a repo with any other name would be at
+   `https://amphi-app.github.io/<repo-name>/`; the app works at either).
 
-After changing any app file, bump `CACHE_NAME` in `sw.js` (`v1` → `v2`) so
-installed copies pick up the new version cleanly.
+After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
+`amphi-v9`) so installed copies pick up the new version cleanly.
 
 ## Working on it
 

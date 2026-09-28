@@ -1,7 +1,7 @@
 {
-  "name": "ZEUS Timetable",
-  "short_name": "Timetable",
-  "description": "Your EPITA ZEUS timetable, in English.",
+  "name": "Amphi",
+  "short_name": "Amphi",
+  "description": "Your EPITA timetable, in English.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

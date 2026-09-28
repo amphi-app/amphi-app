@@ -1,5 +1,5 @@
 {
-  "name": "zeus-timetable",
+  "name": "amphi",
   "private": true,
   "description": "An English, mobile-first viewer for EPITA's ZEUS timetable.",
   "scripts": {
