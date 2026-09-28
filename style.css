@@ -52,13 +52,23 @@ button {
   margin: 0;
 }
 
+/* Errors float above everything (including the app pages); tap to dismiss. */
 .error {
-  background: rgba(220, 38, 38, 0.15);
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  max-width: 528px;
+  margin: 0 auto;
+  z-index: 10;
+  background: #3b1515;
   color: #fca5a5;
+  border: 1px solid #7f1d1d;
   border-radius: 12px;
   padding: 12px 14px;
   font-size: 0.9rem;
-  margin: 0 0 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* ---- Shared buttons ---- */
@@ -207,6 +217,202 @@ button {
   margin-left: auto;
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+/* ---- App shell: two swipeable pages + bottom tab bar ---- */
+#week-view {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+#pager {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+#pager::-webkit-scrollbar {
+  display: none;
+}
+
+.page {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow-y: auto;
+  /* Centre the content in a 560px column on wide screens. */
+  padding: max(20px, env(safe-area-inset-top)) max(16px, calc((100% - 560px) / 2)) 24px;
+}
+
+.bottom-nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.nav-btn {
+  flex: 0 1 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  background: none;
+  border: none;
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-btn[aria-current="page"] {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.nav-btn svg,
+#settings-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Home page ---- */
+.profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.profile-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.greeting,
+.profile-sub {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.profile-name {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.profile-name.is-empty {
+  font-size: 1.1rem;
+  color: #93b4ff;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.section-head h2 {
+  margin: 0 0 2px;
+  font-size: 1.4rem;
+}
+
+.course-card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  padding: 16px 16px 16px 22px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* The coloured strip on the left matches the course's timetable colour. */
+.course-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--card-color);
+}
+
+.course-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.course-title {
+  margin: 0 0 4px;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.course-next {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.course-left {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.course-left strong {
+  display: block;
+  font-size: 1.3rem;
+}
+
+.course-left span {
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 /* ---- Week view ---- */

@@ -282,10 +282,14 @@ function renderCard(event) {
   return row;
 }
 
+let shownEvents = []; // your classes (hidden courses already removed)
+
 function showWeekView(events, updatedAt) {
+  shownEvents = events;
   eventsByDay = indexByDay(events);
   selectedDay = pickStartDay(events);
   renderUpdatedLabel(updatedAt);
+  renderHome(updatedAt);
   document.getElementById("upload-section").hidden = true;
   document.getElementById("course-picker").hidden = true;
   document.getElementById("week-view").hidden = false;
@@ -293,17 +297,155 @@ function showWeekView(events, updatedAt) {
 }
 
 /** "Updated today" / "Updated 3 days ago", so you know how fresh this is. */
+function describeUpdated(updatedAt) {
+  const days = Math.floor((Date.now() - updatedAt.getTime()) / 86400000);
+  if (parisDateKey(updatedAt) === parisDateKey(new Date())) return { text: "Updated today", days };
+  return { text: `Updated ${days <= 1 ? "yesterday" : `${days} days ago`}`, days };
+}
+
 function renderUpdatedLabel(updatedAt) {
   const label = document.getElementById("updated-label");
-  const days = Math.floor((Date.now() - updatedAt.getTime()) / 86400000);
-  if (parisDateKey(updatedAt) === parisDateKey(new Date())) {
-    label.textContent = "Updated today";
-  } else {
-    label.textContent = `Updated ${days <= 1 ? "yesterday" : `${days} days ago`}`;
-  }
+  const { text, days } = describeUpdated(updatedAt);
+  label.textContent = text;
   // After a week, nudge towards reloading — ZEUS schedules do change.
   label.classList.toggle("is-stale", days >= 7);
 }
+
+// ---------------------------------------------------------------------------
+// STEP 5: The Home page — profile on top, your courses below
+// ---------------------------------------------------------------------------
+
+const PROFILE_STORAGE_KEY = "zeus-profile-login";
+
+function loadLogin() {
+  try {
+    return localStorage.getItem(PROFILE_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveLogin(login) {
+  try {
+    localStorage.setItem(PROFILE_STORAGE_KEY, login);
+  } catch {
+    // Ignore — the app still works for this session, it just won't remember.
+  }
+}
+
+/** EPITA logins are firstname.lastname, so "jean-luc.dupont2" -> "Jean-Luc Dupont". */
+function nameFromLogin(login) {
+  return login
+    .split(".")
+    .map((part) => part.replace(/\d+$/, ""))
+    .filter(Boolean)
+    .map((part) => part.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("-"))
+    .join(" ");
+}
+
+const hourFormatter = new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: PARIS });
+
+function greetingForNow() {
+  const hour = Number(hourFormatter.format(new Date()));
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function renderProfile() {
+  const name = nameFromLogin(loadLogin());
+  const nameEl = document.getElementById("profile-name");
+  nameEl.textContent = name || "Tap to add your EPITA login";
+  nameEl.classList.toggle("is-empty", !name);
+  document.getElementById("greeting").textContent = greetingForNow();
+  document.getElementById("avatar").textContent =
+    name ? name.split(" ").map((word) => word[0]).join("").slice(0, 2) : "?";
+}
+
+/** One entry per course: its next session (if any) and how many are left. */
+function summarizeCourses(events) {
+  const now = new Date();
+  const byName = new Map();
+  for (const event of events) {
+    const name = event.summary || "Untitled class";
+    if (!byName.has(name)) byName.set(name, { name, next: null, remaining: 0 });
+    const course = byName.get(name);
+    if (event.end >= now) {
+      course.remaining++;
+      if (!course.next || event.start < course.next.start) course.next = event;
+    }
+  }
+  // Soonest next session first; finished courses at the bottom.
+  return [...byName.values()].sort((a, b) => {
+    if (a.next && b.next) return a.next.start - b.next.start;
+    if (a.next || b.next) return a.next ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+const nextDayFormatter = new Intl.DateTimeFormat("en-GB", {
+  weekday: "short", day: "numeric", month: "short", timeZone: PARIS,
+});
+
+function describeNext(event) {
+  const now = new Date();
+  if (!event) return "No more sessions";
+  const place = event.location ? ` · ${event.location}` : "";
+  if (event.start <= now) return `Now · until ${timeFormatter.format(event.end)}${place}`;
+  const day = parisDateKey(event.start) === parisDateKey(now) ? "Today" : nextDayFormatter.format(event.start);
+  return `${day} · ${timeFormatter.format(event.start)}${place}`;
+}
+
+function renderHome(updatedAt) {
+  renderProfile();
+  const courses = summarizeCourses(shownEvents);
+  document.getElementById("courses-summary").textContent =
+    `${courses.length} ${courses.length === 1 ? "course" : "courses"} · ${describeUpdated(updatedAt).text}`;
+
+  const list = document.getElementById("home-courses");
+  list.innerHTML = "";
+  for (const course of courses) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "course-card";
+    card.style.setProperty("--card-color", classify(course.name).color);
+    card.innerHTML = `
+      <div class="course-info">
+        <p class="course-title">${escapeHTML(course.name)}</p>
+        <p class="course-next">${escapeHTML(describeNext(course.next))}</p>
+      </div>
+      <div class="course-left"><strong>${course.remaining}</strong><span>left</span></div>
+    `;
+    // Tapping a course jumps to its next session in the timetable.
+    card.addEventListener("click", () => {
+      if (course.next) selectedDay = parisDateKey(course.next.start);
+      renderWeek();
+      goToPage(1);
+    });
+    list.appendChild(card);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Swiping between Home and Timetable
+// ---------------------------------------------------------------------------
+// The pages sit side by side in a sideways-scrolling box that snaps to each
+// page (CSS "scroll-snap"), so the browser handles the swipe itself. We just
+// keep the bottom tab bar in sync and let its buttons jump between pages.
+
+const pager = document.getElementById("pager");
+
+function goToPage(index) {
+  pager.scrollTo({ left: index * pager.clientWidth, behavior: "smooth" });
+}
+
+pager.addEventListener("scroll", () => {
+  const page = Math.round(pager.scrollLeft / pager.clientWidth);
+  for (const button of document.querySelectorAll(".nav-btn")) {
+    if (Number(button.dataset.page) === page) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+}, { passive: true });
 
 // ---------------------------------------------------------------------------
 // Remembering your schedule between visits
@@ -623,11 +765,28 @@ document.getElementById("refresh-btn").addEventListener("click", async (event) =
   button.textContent = "Refresh";
 });
 
-document.getElementById("change-source-btn").addEventListener("click", () => {
+function openSourceSettings() {
   document.getElementById("upload-section").hidden = false;
   document.getElementById("week-view").hidden = true;
   document.getElementById("back-btn").hidden = eventsByDay.size === 0;
+}
+
+document.getElementById("change-source-btn").addEventListener("click", openSourceSettings);
+document.getElementById("settings-btn").addEventListener("click", openSourceSettings);
+
+document.getElementById("profile-btn").addEventListener("click", () => {
+  const login = prompt("Your EPITA login, as shown on Forge (e.g. firstname.lastname):", loadLogin());
+  if (login === null) return; // cancelled
+  saveLogin(login.trim().toLowerCase());
+  renderProfile();
 });
+
+for (const button of document.querySelectorAll(".nav-btn")) {
+  button.addEventListener("click", () => goToPage(Number(button.dataset.page)));
+}
+
+// Errors float on top of everything; tap to dismiss.
+document.getElementById("error-message").addEventListener("click", () => showError(""));
 
 document.getElementById("back-btn").addEventListener("click", () => {
   showError("");

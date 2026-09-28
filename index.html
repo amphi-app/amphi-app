@@ -58,31 +58,71 @@
       <button id="show-schedule-btn" type="button" class="primary-btn">Show my schedule</button>
     </section>
 
-    <section id="week-view" hidden>
-      <div class="toolbar">
-        <span id="updated-label"></span>
-        <button id="refresh-btn" type="button" class="link-btn" hidden>Refresh</button>
-        <button id="edit-courses-btn" type="button" class="link-btn">Courses</button>
-        <button id="change-source-btn" type="button" class="link-btn">Source</button>
-      </div>
-
-      <header class="day-header">
-        <h2 id="day-title"></h2>
-        <p id="day-subtitle"></p>
-      </header>
-
-      <div class="week-nav">
-        <button id="prev-week-btn" type="button" class="icon-btn" aria-label="Previous week">‹</button>
-        <span id="week-label"></span>
-        <button id="next-week-btn" type="button" class="icon-btn" aria-label="Next week">›</button>
-        <button id="today-btn" type="button" class="pill-btn">Today</button>
-      </div>
-
-      <nav id="day-tabs" aria-label="Days of the week"></nav>
-
-      <div id="schedule"></div>
-    </section>
   </main>
+
+  <!-- The app itself: two pages side by side. Swiping sideways moves between
+       them (the browser's own "scroll snap" does the swiping, no gesture code). -->
+  <div id="week-view" hidden>
+    <div id="pager">
+      <section class="page" id="home-page" aria-label="Home">
+        <header class="profile-bar">
+          <div id="avatar" class="avatar" aria-hidden="true"></div>
+          <button id="profile-btn" type="button" class="profile-text">
+            <span id="greeting" class="greeting"></span>
+            <span id="profile-name" class="profile-name"></span>
+            <span class="profile-sub">EPITA Paris</span>
+          </button>
+          <button id="settings-btn" type="button" class="icon-btn" aria-label="Timetable source">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          </button>
+        </header>
+
+        <div class="section-head">
+          <div>
+            <h2>Your courses</h2>
+            <p id="courses-summary" class="hint"></p>
+          </div>
+          <button id="edit-courses-btn" type="button" class="link-btn">Edit</button>
+        </div>
+        <div id="home-courses"></div>
+      </section>
+
+      <section class="page" id="timetable-page" aria-label="Timetable">
+        <div class="toolbar">
+          <span id="updated-label"></span>
+          <button id="refresh-btn" type="button" class="link-btn" hidden>Refresh</button>
+          <button id="change-source-btn" type="button" class="link-btn">Source</button>
+        </div>
+
+        <header class="day-header">
+          <h2 id="day-title"></h2>
+          <p id="day-subtitle"></p>
+        </header>
+
+        <div class="week-nav">
+          <button id="prev-week-btn" type="button" class="icon-btn" aria-label="Previous week">‹</button>
+          <span id="week-label"></span>
+          <button id="next-week-btn" type="button" class="icon-btn" aria-label="Next week">›</button>
+          <button id="today-btn" type="button" class="pill-btn">Today</button>
+        </div>
+
+        <nav id="day-tabs" aria-label="Days of the week"></nav>
+
+        <div id="schedule"></div>
+      </section>
+    </div>
+
+    <nav class="bottom-nav" aria-label="Pages">
+      <button type="button" class="nav-btn" data-page="0" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+        <span>Home</span>
+      </button>
+      <button type="button" class="nav-btn" data-page="1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        <span>Timetable</span>
+      </button>
+    </nav>
+  </div>
 
   <script src="ics.js"></script>
   <script src="app.js"></script>

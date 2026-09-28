@@ -30,7 +30,11 @@ No login handling, no server, no external services — it's four plain files
    share a name across groups ("Algorithmique" alone covers 491 sessions),
    and nothing in the file tells them apart, so you'd get other groups'
    classes mixed in. The app warns you if you load one.
-3. **Use it.** The app opens on your next class. Day tabs show how many
+3. **Use it.** The app opens on **Home**: your name (tap it to enter your
+   EPITA login, e.g. `dev.vashisth`) and your courses, each with its next
+   session — tap one to jump to that day. **Swipe left** for the timetable,
+   right to come back (or use the tabs at the bottom). The timetable opens
+   on your next class. Day tabs show how many
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.
@@ -71,10 +75,10 @@ installed copies pick up the new version cleanly.
 
 | File | What it does |
 |---|---|
-| `index.html` | Page structure: upload panel, course picker, week view. |
+| `index.html` | Page structure: setup screens (link/upload, course picker) and the app itself (Home + Timetable pages, tab bar). |
 | `style.css` | All the looks — dark, mobile-first. Colors are tokens at the top. |
 | `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
-| `app.js` | Everything on screen: course picker, week view, saving, startup. |
+| `app.js` | Everything on screen: setup, Home page, timetable, swiping, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
 | `tests/ics.test.js` | Automated tests for `ics.js`. |
