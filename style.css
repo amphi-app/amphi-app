@@ -443,6 +443,96 @@ button {
   font-size: 0.75rem;
 }
 
+/* ---- Free rooms page ---- */
+.setup-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.chip-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.rooms-note {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
+#rooms-list {
+  margin-top: 18px;
+}
+
+.room-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border-radius: 14px;
+}
+
+.room-name {
+  font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.room-until {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.room-until.is-long {
+  color: var(--today);
+}
+
+#rooms-updated.is-stale {
+  color: #fbbf24;
+}
+
+#rooms-updated {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* ---- Week view ---- */
 .toolbar {
   display: flex;

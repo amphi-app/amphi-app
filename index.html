@@ -134,6 +134,39 @@
 
         <div id="schedule"></div>
       </section>
+
+      <section class="page" id="rooms-page" aria-label="Free rooms">
+        <header class="day-header">
+          <h2>Free rooms</h2>
+          <p id="rooms-subtitle">Rooms with no class booked in ZEUS</p>
+        </header>
+
+        <div id="rooms-setup" class="panel">
+          <p>Free rooms needs the <strong>whole-school</strong> timetable, the only ZEUS file that lists every room booking.</p>
+          <ol class="setup-steps">
+            <li>In ZEUS, open <strong>Groupes</strong> and tick only <strong>EPITA</strong>, without opening the tree.</li>
+            <li>Click <strong>Générer un ICS</strong> and download the file.</li>
+            <li>Choose it here. It's a big file, so give it a second.</li>
+          </ol>
+          <label class="file-drop" for="rooms-input">
+            <span>Choose the whole-school file (.ics)</span>
+            <input type="file" id="rooms-input" accept=".ics" />
+          </label>
+        </div>
+
+        <div id="rooms-view" hidden>
+          <div class="toolbar">
+            <span id="rooms-updated"></span>
+            <label class="link-btn" for="rooms-reload-input">Load a newer file
+              <input type="file" id="rooms-reload-input" class="hidden-file" accept=".ics" />
+            </label>
+          </div>
+          <div class="chip-row" id="campus-chips" role="group" aria-label="Campus"></div>
+          <div class="chip-row" id="time-chips" role="group" aria-label="Time"></div>
+          <p id="rooms-note" class="rooms-note" hidden></p>
+          <div id="rooms-list"></div>
+        </div>
+      </section>
     </div>
 
     <nav class="bottom-nav" aria-label="Pages">
@@ -145,11 +178,16 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
         <span>Timetable</span>
       </button>
+      <button type="button" class="nav-btn" data-page="2">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4a1 1 0 0 1 1-1h8l3 3v15"/><path d="M3 21h18"/><path d="M14 12h.01"/></svg>
+        <span>Rooms</span>
+      </button>
     </nav>
   </div>
 
   <script src="ics.js"></script>
   <script src="kinds.js"></script>
+  <script src="rooms.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

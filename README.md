@@ -45,7 +45,15 @@ Live at **https://amphi-app.github.io/**.
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.
-4. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
+4. **Free rooms** (third tab). Load the **whole-school** ZEUS file once (in
+   ZEUS, tick only EPITA, then Générer un ICS and download it): Amphi then
+   lists rooms with no class booked right now, or in 1–3 hours, by campus,
+   with how long each stays that way. It says "no class booked", not
+   "free": a room can still be locked or used informally, and the list is
+   only as fresh as the file (about 2% of room bookings change per week).
+   Campuses are recognised from room names in `CAMPUS_RULES` in `rooms.js`;
+   rooms that match no rule are listed under "Other rooms".
+5. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
    full-screen like an app, and works without internet.
 
@@ -88,10 +96,11 @@ After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
 | `style.css` | All the looks — dark, mobile-first. Colors are tokens at the top. |
 | `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
 | `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title. Testable too. |
+| `rooms.js` | Works out which rooms have no class booked at a given time, and which campus each room is on. Testable too. |
 | `app.js` | Everything on screen: setup, Home page, timetable, swiping, saving, startup. |
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
-| `tests/` | Automated tests for `ics.js` and `kinds.js` (real ZEUS titles). |
+| `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles) and `rooms.js`. |
 | `sample.ics` | The small fake timetable behind "try it with a sample". |
 
 ### How the code flows

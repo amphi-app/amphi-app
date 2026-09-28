@@ -470,12 +470,19 @@ function goToPage(index) {
   pager.scrollTo({ left: index * pager.clientWidth, behavior: "smooth" });
 }
 
+const ROOMS_PAGE = 2;
+let currentPage = 0;
+
 pager.addEventListener("scroll", () => {
   const page = Math.round(pager.scrollLeft / pager.clientWidth);
+  if (page === currentPage) return;
+  currentPage = page;
   for (const button of document.querySelectorAll(".nav-btn")) {
     if (Number(button.dataset.page) === page) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   }
+  // Recompute free rooms on arrival, so "Now" really means now.
+  if (page === ROOMS_PAGE) renderRooms();
 }, { passive: true });
 
 // ---------------------------------------------------------------------------
@@ -742,6 +749,161 @@ function loadScheduleFromText(text, { isSample = false } = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// STEP 6: Free rooms
+// ---------------------------------------------------------------------------
+// Uses the whole-school ZEUS file, which lists every room booking. Only a
+// small summary is saved (which room is booked when, for the next 8 weeks),
+// not the file itself. The room logic lives in rooms.js.
+
+const ROOMS_STORAGE_KEY = "zeus-rooms";
+const ROOMS_CAMPUS_KEY = "zeus-rooms-campus";
+const ROOMS_WEEKS = 8;
+const TIME_CHOICES = [0, 1, 2, 3]; // hours from now
+
+let roomData = null; // { savedAt: Date, occupancy }
+let roomsHoursAhead = 0;
+let roomsCampus = "Kremlin-Bicêtre";
+
+function loadRoomSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ROOMS_STORAGE_KEY));
+    if (saved) roomData = { savedAt: new Date(saved.savedAt), occupancy: saved.occupancy };
+    roomsCampus = localStorage.getItem(ROOMS_CAMPUS_KEY) || roomsCampus;
+  } catch {
+    // Nothing saved, or storage unavailable: show the setup instead.
+  }
+}
+
+function saveRoomData() {
+  try {
+    localStorage.setItem(ROOMS_STORAGE_KEY, JSON.stringify(roomData));
+  } catch {
+    // Ignore — the app still works for this session, it just won't remember.
+  }
+}
+
+function loadRoomsFromText(text) {
+  try {
+    const events = parseICS(text);
+    // A group's own file only has that group's bookings, which would make
+    // almost every room look free.
+    if (getUniqueCourses(events).length <= WHOLE_SCHOOL_COURSE_COUNT) {
+      showError("That looks like one group's file. Free rooms needs the whole-school file: in ZEUS, tick only EPITA, then Générer un ICS.");
+      return;
+    }
+    const now = new Date();
+    const from = new Date(now.getTime() - 86400000);
+    const until = new Date(now.getTime() + ROOMS_WEEKS * 7 * 86400000);
+    roomData = { savedAt: now, occupancy: buildOccupancy(events, from, until) };
+    saveRoomData();
+    showError("");
+    renderRooms();
+  } catch (err) {
+    showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
+    console.error(err);
+  }
+}
+
+function readRoomsFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => loadRoomsFromText(reader.result);
+  reader.onerror = () => showError("Couldn't read that file.");
+  reader.readAsText(file);
+  event.target.value = ""; // so choosing the same file again still triggers
+}
+
+/** A row of toggle buttons; `onPick` runs with the chosen value. */
+function renderChips(containerId, options, selected, onPick) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  for (const { value, label } of options) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip-btn";
+    chip.textContent = label;
+    chip.setAttribute("aria-pressed", String(value === selected));
+    chip.addEventListener("click", () => onPick(value));
+    container.appendChild(chip);
+  }
+}
+
+function renderRooms() {
+  document.getElementById("rooms-setup").hidden = Boolean(roomData);
+  document.getElementById("rooms-view").hidden = !roomData;
+  if (!roomData) return;
+
+  const updated = describeUpdated(roomData.savedAt);
+  const updatedLabel = document.getElementById("rooms-updated");
+  updatedLabel.textContent = `ZEUS data: ${updated.text.toLowerCase()}`;
+  updatedLabel.classList.toggle("is-stale", updated.days >= 7);
+
+  const at = new Date(Date.now() + roomsHoursAhead * 3600000);
+  const campuses = [...new Set(Object.keys(roomData.occupancy).map(campusOf))].sort();
+  if (!campuses.includes(roomsCampus)) roomsCampus = campuses[0];
+
+  renderChips("campus-chips", campuses.map((c) => ({ value: c, label: c })), roomsCampus, (campus) => {
+    roomsCampus = campus;
+    try { localStorage.setItem(ROOMS_CAMPUS_KEY, campus); } catch { /* not remembered */ }
+    renderRooms();
+  });
+  renderChips("time-chips", TIME_CHOICES.map((hours) => ({
+    value: hours,
+    label: hours === 0 ? "Now" : timeFormatter.format(new Date(Date.now() + hours * 3600000)),
+  })), roomsHoursAhead, (hours) => {
+    roomsHoursAhead = hours;
+    renderRooms();
+  });
+
+  // "Rest of the day" when a room's next booking isn't today (or there's none).
+  const today = parisDateKey(at);
+  const rooms = freeRoomsAt(roomData.occupancy, at)
+    .filter((room) => room.campus === roomsCampus)
+    .map((room) => ({ ...room, restOfDay: !room.freeUntil || parisDateKey(room.freeUntil) !== today }))
+    .sort((a, b) => (b.restOfDay - a.restOfDay) ||
+      (a.restOfDay ? 0 : b.freeUntil - a.freeUntil) ||
+      a.room.localeCompare(b.room, "en", { numeric: true }));
+
+  document.getElementById("rooms-subtitle").textContent =
+    `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"} with no class booked ` +
+    (roomsHoursAhead === 0 ? "right now" : `at ${timeFormatter.format(at)}`);
+
+  const hour = Number(hourFormatter.format(at));
+  const weekday = weekdayShort.format(keyToDate(today));
+  const notes = [];
+  if (weekday === "Sat" || weekday === "Sun" || hour < 8 || hour >= 20) {
+    notes.push("Outside usual hours: buildings may be closed. ZEUS doesn't list opening hours.");
+  }
+  if (roomsCampus === OTHER_CAMPUS) {
+    notes.push("These rooms aren't sorted by campus yet.");
+  }
+  const note = document.getElementById("rooms-note");
+  note.textContent = notes.join(" ");
+  note.hidden = notes.length === 0;
+
+  const list = document.getElementById("rooms-list");
+  list.innerHTML = "";
+  if (rooms.length === 0) {
+    list.innerHTML = `<p class="empty-day">No rooms without a class at this time.</p>`;
+    return;
+  }
+  for (const room of rooms) {
+    const row = document.createElement("div");
+    row.className = "room-row";
+    const until = room.restOfDay ? "Rest of the day" : `Until ${timeFormatter.format(room.freeUntil)}`;
+    row.innerHTML = `
+      <span class="room-name">${escapeHTML(room.room)}</span>
+      <span class="room-until${room.restOfDay ? " is-long" : ""}">${until}</span>
+    `;
+    list.appendChild(row);
+  }
+}
+
+document.getElementById("rooms-input").addEventListener("change", readRoomsFile);
+document.getElementById("rooms-reload-input").addEventListener("change", readRoomsFile);
+
+// ---------------------------------------------------------------------------
 // Wiring: connect the HTML elements to the functions above
 // ---------------------------------------------------------------------------
 
@@ -877,7 +1039,10 @@ document.getElementById("forget-url-btn").addEventListener("click", () => {
 // On page load
 // ---------------------------------------------------------------------------
 
-// 1. Show the saved copy of your schedule straight away (works offline).
+// 1. Show the saved copy of your schedule straight away (works offline),
+//    and any saved free-rooms data.
+loadRoomSettings();
+renderRooms();
 const mySchedule = loadMySchedule();
 if (mySchedule) {
   showWeekView(mySchedule.events, mySchedule.savedAt);
