@@ -11,6 +11,9 @@
 // rule are listed under "Other rooms". Edit this table to fix a campus.
 const CAMPUS_RULES = [
   { campus: "Kremlin-Bicêtre", pattern: /^KB|\bKB\d|\(KB\d\)/i },
+  // A/B/C followed by a number ("A202", "C04 (Amphithéâtre)"), so "Alphago"
+  // and "Amphi Conway" don't count; and "Salle machine 302" to "311".
+  { campus: "Villejuif", pattern: /^[ABC]\d|^Salle machine 3\d\d/i },
 ];
 const OTHER_CAMPUS = "Other rooms";
 

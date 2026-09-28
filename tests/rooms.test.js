@@ -26,7 +26,18 @@ test("knows Kremlin-Bicêtre rooms from their name", () => {
   for (const room of ["KB202", "KB001 (amphi 1)", "SM Cisco - KB105", "303 (KB3)"]) {
     assert.equal(campusOf(room), "Kremlin-Bicêtre", room);
   }
-  assert.equal(campusOf("A202"), "Other rooms");
+});
+
+test("knows Villejuif rooms from their name", () => {
+  for (const room of ["A202", "A105 B", "B01", "B106", "C04 (Amphithéâtre)", "C04A", "Salle machine 302", "Salle machine 311"]) {
+    assert.equal(campusOf(room), "Villejuif", room);
+  }
+});
+
+test("rooms nobody has placed yet stay under Other rooms", () => {
+  for (const room of ["Alphago", "Amphi Conway", "321 - Salle Machine", "SM-1", "Turing", "Paritalie - 3ème Apprentissage 1"]) {
+    assert.equal(campusOf(room), "Other rooms", room);
+  }
 });
 
 test("joins overlapping bookings", () => {

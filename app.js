@@ -840,7 +840,9 @@ function renderRooms() {
   updatedLabel.classList.toggle("is-stale", updated.days >= 7);
 
   const at = new Date(Date.now() + roomsHoursAhead * 3600000);
-  const campuses = [...new Set(Object.keys(roomData.occupancy).map(campusOf))].sort();
+  // Real campuses alphabetically, then "Other rooms" last.
+  const campuses = [...new Set(Object.keys(roomData.occupancy).map(campusOf))]
+    .sort((a, b) => (a === OTHER_CAMPUS) - (b === OTHER_CAMPUS) || a.localeCompare(b));
   if (!campuses.includes(roomsCampus)) roomsCampus = campuses[0];
 
   renderChips("campus-chips", campuses.map((c) => ({ value: c, label: c })), roomsCampus, (campus) => {
