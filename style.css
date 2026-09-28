@@ -125,6 +125,11 @@ button {
   font-size: 0.9rem;
 }
 
+.danger-link {
+  color: #f87171;
+  margin-top: 8px;
+}
+
 .back-btn {
   align-self: flex-start;
   text-decoration: none;

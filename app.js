@@ -797,10 +797,26 @@ document.getElementById("refresh-btn").addEventListener("click", async (event) =
 });
 
 function openSourceSettings() {
+  const hasTimetable = eventsByDay.size > 0;
   document.getElementById("upload-section").hidden = false;
   document.getElementById("week-view").hidden = true;
-  document.getElementById("back-btn").hidden = eventsByDay.size === 0;
+  document.getElementById("back-btn").hidden = !hasTimetable;
+  document.getElementById("start-over-btn").hidden = !hasTimetable;
 }
+
+// Wipes everything this app saved (link, timetable, hidden courses, login)
+// and reloads, so the app opens like it's the first time.
+document.getElementById("start-over-btn").addEventListener("click", () => {
+  if (!confirm("Start over? This removes your saved link, timetable and settings from this phone.")) return;
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("zeus-")) localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage unavailable — nothing was saved, so there's nothing to clear.
+  }
+  location.reload();
+});
 
 document.getElementById("change-source-btn").addEventListener("click", openSourceSettings);
 document.getElementById("settings-btn").addEventListener("click", openSourceSettings);
