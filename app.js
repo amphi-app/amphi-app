@@ -15,12 +15,9 @@
 // ---------------------------------------------------------------------------
 // STEP 0: Configuration
 // ---------------------------------------------------------------------------
-// Confirmed against a real ZEUS export: course titles (SUMMARY) almost never
-// carry a CM/TD/TP prefix, so we can't color-code by class type. Instead,
-// each distinct course name gets a stable color (same course = same color
-// every time, via a hash), and exam-sounding titles get a red highlight
-// on top of that, since that pattern *does* show up reliably in real data.
-const EXAM_PATTERN = /\b(examen|partiel|contr[oô]le)\b/i;
+// Each distinct course name gets a stable color (same course = same color
+// every time, via a hash). Exams are red and days off grey; which entries
+// are exams, events or days off is decided in kinds.js.
 
 // Cards are filled with these colors and carry white text, so every color
 // here is dark enough to keep that text readable.
@@ -84,11 +81,22 @@ END:VCALENDAR
 // STEP 2: Decide how to color/badge each event
 // ---------------------------------------------------------------------------
 
+let titleCounts = new Map(); // how many times each title appears in your timetable
+
+const KIND_LABELS = { exam: "Exam", event: "Event", dayoff: "Day off" };
+
+function countTitles(events) {
+  const counts = new Map();
+  for (const event of events) counts.set(event.summary, (counts.get(event.summary) || 0) + 1);
+  return counts;
+}
+
+/** { kind: "course" | "exam" | "event" | "dayoff", color } */
 function classify(summary = "") {
-  if (EXAM_PATTERN.test(summary)) {
-    return { isExam: true, color: "var(--color-exam)" };
-  }
-  return { isExam: false, color: colorForCourse(summary) };
+  const kind = kindOf(summary, titleCounts.get(summary));
+  if (kind === "exam") return { kind, color: "var(--color-exam)" };
+  if (kind === "dayoff") return { kind, color: "var(--color-dayoff)" };
+  return { kind, color: colorForCourse(summary) };
 }
 
 // ZEUS course titles often end in a group label like "GR A1" or "GPE B1".
@@ -269,7 +277,7 @@ function renderCard(event) {
     <article class="class-card" style="--card-color: ${type.color}">
       <div class="class-card-top">
         <h3 class="class-title">${escapeHTML(event.summary || "Untitled class")}</h3>
-        ${type.isExam ? `<span class="class-badge">Exam</span>` : ""}
+        ${type.kind !== "course" ? `<span class="class-badge">${KIND_LABELS[type.kind]}</span>` : ""}
       </div>
       ${event.description ? `<p class="class-note">${escapeHTML(event.description)}</p>` : ""}
       <div class="chips">
@@ -286,6 +294,7 @@ let shownEvents = []; // your classes (hidden courses already removed)
 
 function showWeekView(events, updatedAt) {
   shownEvents = events;
+  titleCounts = countTitles(events);
   eventsByDay = indexByDay(events);
   selectedDay = pickStartDay(events);
   renderUpdatedLabel(updatedAt);
@@ -396,34 +405,56 @@ function describeNext(event) {
   return `${day} · ${timeFormatter.format(event.start)}${place}`;
 }
 
+// How many exams/events/days off "Coming up" shows — just the nearest few.
+const COMING_UP_LIMIT = 3;
+
 function renderHome(updatedAt) {
   renderProfile();
-  const courses = summarizeCourses(shownEvents);
+  const entries = summarizeCourses(shownEvents);
+  const courses = entries.filter((entry) => classify(entry.name).kind === "course");
+  const comingUp = entries
+    .filter((entry) => classify(entry.name).kind !== "course" && entry.next)
+    .slice(0, COMING_UP_LIMIT);
+
   document.getElementById("courses-summary").textContent =
     `${courses.length} ${courses.length === 1 ? "course" : "courses"} · ${describeUpdated(updatedAt).text}`;
 
-  const list = document.getElementById("home-courses");
-  list.innerHTML = "";
+  const courseList = document.getElementById("home-courses");
+  courseList.innerHTML = "";
   for (const course of courses) {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "course-card";
-    card.style.setProperty("--card-color", classify(course.name).color);
-    card.innerHTML = `
-      <div class="course-info">
-        <p class="course-title">${escapeHTML(course.name)}</p>
-        <p class="course-next">${escapeHTML(describeNext(course.next))}</p>
-      </div>
-      <div class="course-left"><strong>${course.remaining}</strong><span>left</span></div>
-    `;
-    // Tapping a course jumps to its next session in the timetable.
-    card.addEventListener("click", () => {
-      if (course.next) selectedDay = parisDateKey(course.next.start);
-      renderWeek();
-      goToPage(1);
-    });
-    list.appendChild(card);
+    courseList.appendChild(renderHomeCard(course,
+      `<div class="course-left"><strong>${course.remaining}</strong><span>left</span></div>`));
   }
+
+  const comingUpList = document.getElementById("home-coming-up");
+  comingUpList.innerHTML = "";
+  for (const entry of comingUp) {
+    const label = KIND_LABELS[classify(entry.name).kind];
+    comingUpList.appendChild(renderHomeCard(entry, `<span class="kind-badge">${label}</span>`));
+  }
+  document.getElementById("coming-up-section").hidden = comingUp.length === 0;
+}
+
+/** One tappable card on Home; `rightSide` is the HTML shown on its right. */
+function renderHomeCard(entry, rightSide) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "course-card";
+  card.style.setProperty("--card-color", classify(entry.name).color);
+  card.innerHTML = `
+    <div class="course-info">
+      <p class="course-title">${escapeHTML(entry.name)}</p>
+      <p class="course-next">${escapeHTML(describeNext(entry.next))}</p>
+    </div>
+    ${rightSide}
+  `;
+  // Tapping a card jumps to its next session in the timetable.
+  card.addEventListener("click", () => {
+    if (entry.next) selectedDay = parisDateKey(entry.next.start);
+    renderWeek();
+    goToPage(1);
+  });
+  return card;
 }
 
 // ---------------------------------------------------------------------------

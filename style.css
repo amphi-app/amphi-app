@@ -11,6 +11,7 @@
   --accent: #2563eb;
   --today: #22a35a;
   --color-exam: #dc2626;
+  --color-dayoff: #52525b;
   --radius: 18px;
 }
 
@@ -400,6 +401,20 @@ button {
   font-size: 0.85rem;
 }
 
+#coming-up-section {
+  margin-bottom: 28px;
+}
+
+.kind-badge {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--card-color);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .course-left {
   flex-shrink: 0;
   text-align: center;
@@ -564,7 +579,7 @@ button {
 
 .class-badge {
   background: #fff;
-  color: var(--color-exam);
+  color: var(--card-color);
   font-weight: 700;
   font-size: 0.8rem;
   padding: 4px 12px;
