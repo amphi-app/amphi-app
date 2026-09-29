@@ -255,13 +255,81 @@ function renderDay() {
     if (latestEnd && event.start - latestEnd >= 15 * 60 * 1000) {
       const gap = document.createElement("div");
       gap.className = "break-row";
-      gap.textContent = `Break · ${formatDuration(event.start - latestEnd)}`;
+      gap.innerHTML = `<span>Break · ${formatDuration(event.start - latestEnd)}</span>`;
       container.appendChild(gap);
     }
     container.appendChild(renderCard(event));
     if (!latestEnd || event.end > latestEnd) latestEnd = event.end;
   }
+  placeNowLine();
 }
+
+// The "now" line: a red line across today's timetable at the current time,
+// like a phone calendar's. The timetable is a list without the empty hours,
+// so the line sits inside the class that's on (as far down as the class has
+// got), or in the gap between two classes, and moves as the day goes on.
+function placeNowLine() {
+  const container = document.getElementById("schedule");
+  container.querySelector(".now-line")?.remove();
+  for (const label of container.querySelectorAll(".is-covered")) label.classList.remove("is-covered");
+
+  const now = new Date();
+  const rows = [...container.querySelectorAll(".timeline-row")];
+  // Only on today, and only while the timetable is laid out (not hidden).
+  if (selectedDay !== parisDateKey(now) || rows.length === 0 || container.offsetParent === null) return;
+
+  const t = now.getTime();
+  const startOf = (row) => Number(row.dataset.start);
+  const endOf = (row) => Number(row.dataset.end);
+  const bottomOf = (el) => el.offsetTop + el.offsetHeight;
+  let y;
+  const current = rows.find((row) => startOf(row) <= t && t < endOf(row));
+  if (current) {
+    const card = current.querySelector(".class-card");
+    const done = (t - startOf(current)) / (endOf(current) - startOf(current));
+    y = card.offsetTop + done * card.offsetHeight;
+  } else {
+    const next = rows.findIndex((row) => startOf(row) > t);
+    if (next === 0) {
+      y = 0; // before the first class
+    } else if (next === -1) {
+      y = bottomOf(rows[rows.length - 1]) + 6; // after the last class
+    } else {
+      // In the gap: as far through it as the break has got.
+      const before = rows.slice(0, next);
+      const gapStart = Math.max(...before.map(endOf));
+      const done = Math.min(1, Math.max(0, (t - gapStart) / (startOf(rows[next]) - gapStart)));
+      const top = bottomOf(rows[next - 1]);
+      y = top + done * (rows[next].offsetTop - top);
+    }
+  }
+
+  const line = document.createElement("div");
+  line.className = "now-line";
+  line.style.top = `${y}px`;
+  line.innerHTML = `<span class="now-time">${timeFormatter.format(now)}</span>`;
+  container.appendChild(line);
+
+  // Hide a class's start time where the red time would sit on top of it.
+  for (const label of container.querySelectorAll(".timeline-time")) {
+    // The label's text starts below its 18px top padding.
+    const middle = label.offsetTop + 18 + (label.offsetHeight - 18) / 2;
+    if (Math.abs(middle - y) < 20) label.classList.add("is-covered");
+  }
+}
+
+// Move the line every half minute, and move to the new day at midnight.
+let lastToday = parisDateKey(new Date());
+setInterval(() => {
+  const today = parisDateKey(new Date());
+  if (today !== lastToday && eventsByDay.size > 0) {
+    lastToday = today;
+    renderWeek();
+    return;
+  }
+  placeNowLine();
+}, 30000);
+window.addEventListener("resize", placeNowLine);
 
 /** The English for a title's French words, as a small line under it
  *  ("Rattrapages = Resits · S3 = Semester 3"); empty when there are none. */
@@ -280,6 +348,8 @@ function renderCard(event) {
 
   const row = document.createElement("div");
   row.className = "timeline-row";
+  row.dataset.start = event.start.getTime();
+  row.dataset.end = event.end.getTime();
   row.innerHTML = `
     <div class="timeline-time">${start}</div>
     <article class="class-card" style="--card-color: ${type.color}">
@@ -1414,6 +1484,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
   wantsCourseList = false;
   document.getElementById("upload-section").hidden = true;
   document.getElementById("week-view").hidden = false;
+  placeNowLine();
 });
 
 document.getElementById("prev-week-btn").addEventListener("click", () => {
@@ -1429,6 +1500,7 @@ document.getElementById("next-week-btn").addEventListener("click", () => {
 document.getElementById("today-btn").addEventListener("click", () => {
   selectedDay = parisDateKey(new Date());
   renderWeek();
+  document.querySelector("#schedule .now-line")?.scrollIntoView({ block: "center", behavior: "smooth" });
 });
 
 document.getElementById("load-url-btn").addEventListener("click", () => {
@@ -1490,7 +1562,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v22";
+const APP_VERSION = "amphi-v23";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

@@ -44,7 +44,9 @@ Live at **https://amphi-app.github.io/**.
    **ZEUS words in English** at the bottom of Home lists them all (the list
    is `GLOSSARY` in `kinds.js`). **Swipe left** for the timetable,
    right to come back (or use the tabs at the bottom). The timetable opens
-   on your next class. Day tabs show how many
+   on your next class. On today, a red line with the time shows where
+   you are in the day: inside the class that's on (as far down as the
+   class has got) or in the gap between classes. Day tabs show how many
    classes each day has (today is outlined in green); arrows move between
    weeks. "Updated today / 3 days ago" shows how fresh your copy is — it
    turns yellow after a week as a reminder to reload.

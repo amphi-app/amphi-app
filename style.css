@@ -10,6 +10,7 @@
   --border: #2e3036;
   --accent: #2563eb;
   --today: #22a35a;
+  --now: #ff453a;
   --color-exam: #dc2626;
   --color-dayoff: #52525b;
   --radius: 18px;
@@ -867,6 +868,7 @@ button {
 }
 
 .timeline-time {
+  align-self: start; /* only as tall as the time, so app.js can tell where it is */
   color: var(--muted);
   font-size: 0.85rem;
   font-weight: 600;
@@ -937,6 +939,54 @@ button {
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* The red "now" line across today's timetable (placed by app.js). */
+#schedule {
+  position: relative;
+}
+
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--now);
+  /* A thin outline in the page colour keeps it visible on red exam cards. */
+  box-shadow: 0 0 0 1.5px var(--bg);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Text and chips sit above the line; the line still shows across the card. */
+.class-card > *,
+.break-row span {
+  position: relative;
+  z-index: 1;
+}
+
+.break-row span {
+  background: var(--bg);
+  padding-right: 8px;
+}
+
+.now-time {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--now);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.timeline-time.is-covered {
+  visibility: hidden;
 }
 
 .break-row {
