@@ -914,16 +914,6 @@ function renderRooms() {
     `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"} with no class booked ` +
     (roomsHoursAhead === 0 ? "right now" : `at ${timeFormatter.format(at)}`);
 
-  const hour = Number(hourFormatter.format(at));
-  const weekday = weekdayShort.format(keyToDate(today));
-  const notes = [];
-  if (weekday === "Sat" || weekday === "Sun" || hour < 8 || hour >= 20) {
-    notes.push("Outside usual hours: buildings may be closed. ZEUS doesn't list opening hours.");
-  }
-  const note = document.getElementById("rooms-note");
-  note.textContent = notes.join(" ");
-  note.hidden = notes.length === 0;
-
   const list = document.getElementById("rooms-list");
   list.innerHTML = "";
   if (rooms.length === 0) {
@@ -1455,7 +1445,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v18";
+const APP_VERSION = "amphi-v19";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

@@ -707,15 +707,6 @@ button {
   color: #fff;
 }
 
-.rooms-note {
-  margin: 14px 0 0;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--surface);
-  color: #fbbf24;
-  font-size: 0.85rem;
-}
-
 #rooms-list {
   margin-top: 18px;
 }
