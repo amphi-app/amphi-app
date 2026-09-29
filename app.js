@@ -264,6 +264,15 @@ function renderDay() {
   }
 }
 
+/** The English for a title's French words, as a small line under it
+ *  ("Rattrapages = Resits · S3 = Semester 3"); empty when there are none. */
+function glossLine(title, className) {
+  const words = glossaryFor(title);
+  if (words.length === 0) return "";
+  const text = words.map((word) => `${word.term} = ${word.english}`).join(" · ");
+  return `<p class="${className}">${escapeHTML(text)}</p>`;
+}
+
 function renderCard(event) {
   const type = classify(event.summary);
   const group = extractGroup(event.summary);
@@ -280,6 +289,7 @@ function renderCard(event) {
         ${type.kind !== "course" ? `<span class="class-badge">${KIND_LABELS[type.kind]}</span>` : ""}
         ${changeBadge(event)}
       </div>
+      ${glossLine(event.summary, "class-gloss")}
       ${event.description ? `<p class="class-note">${escapeHTML(event.description)}</p>` : ""}
       <div class="chips">
         <span class="chip">${ICON_CLOCK}${start} – ${end}</span>
@@ -447,6 +457,7 @@ function renderHomeCard(entry, rightSide) {
   card.innerHTML = `
     <div class="course-info">
       <p class="course-title">${escapeHTML(entry.name)}</p>
+      ${glossLine(entry.name, "course-gloss")}
       <p class="course-next">${escapeHTML(describeNext(entry.next))}</p>
     </div>
     ${rightSide}
@@ -459,6 +470,16 @@ function renderHomeCard(entry, rightSide) {
   });
   return card;
 }
+
+/** The "ZEUS words in English" list at the bottom of Home. */
+function renderGlossary() {
+  const list = document.getElementById("glossary-list");
+  list.innerHTML = [...GLOSSARY]
+    .sort((a, b) => a.term.localeCompare(b.term, "fr"))
+    .map((entry) => `<div><dt>${escapeHTML(entry.term)}</dt><dd>${escapeHTML(entry.english)}</dd></div>`)
+    .join("");
+}
+renderGlossary();
 
 // ---------------------------------------------------------------------------
 // Swiping between Home and Timetable
@@ -522,18 +543,49 @@ function loadMySchedule() {
   }
 }
 
+// Messages float at the top and go away on their own (sooner for good
+// news), or when tapped or swiped up.
+const ERROR_SECONDS = 8;
+const TOAST_SECONDS = 4;
+let messageTimer = null;
+
+function showMessage(message, { info, seconds }) {
+  const box = document.getElementById("error-message");
+  box.textContent = message;
+  box.hidden = !message;
+  box.classList.toggle("is-info", Boolean(info));
+  box.style.transform = "";
+  clearTimeout(messageTimer);
+  if (message) messageTimer = setTimeout(() => showMessage("", {}), seconds * 1000);
+}
+
 function showError(message) {
-  const errorEl = document.getElementById("error-message");
-  errorEl.textContent = message;
-  errorEl.hidden = !message;
-  errorEl.classList.remove("is-info");
+  showMessage(message, { info: false, seconds: ERROR_SECONDS });
 }
 
 /** Same floating message as errors, in green, for good news. */
 function showToast(message) {
-  showError(message);
-  document.getElementById("error-message").classList.add("is-info");
+  showMessage(message, { info: true, seconds: TOAST_SECONDS });
 }
+
+// Swipe the message up to dismiss it; a short drag springs back.
+let swipeStartY = null;
+const messageBox = document.getElementById("error-message");
+messageBox.addEventListener("touchstart", (event) => {
+  swipeStartY = event.touches[0].clientY;
+}, { passive: true });
+messageBox.addEventListener("touchmove", (event) => {
+  if (swipeStartY === null) return;
+  const dragged = Math.min(0, event.touches[0].clientY - swipeStartY);
+  messageBox.style.transform = `translateY(${dragged}px)`;
+}, { passive: true });
+messageBox.addEventListener("touchend", (event) => {
+  if (swipeStartY === null) return;
+  const dragged = event.changedTouches[0].clientY - swipeStartY;
+  swipeStartY = null;
+  if (dragged < -30) showError("");
+  else messageBox.style.transform = "";
+});
 
 // ---------------------------------------------------------------------------
 // STEP 2 (continued): Hiding courses you don't take

@@ -39,3 +39,44 @@ test("exams and days off win over the appears-once rule", () => {
   assert.equal(kindOf("EXAMEN 5 SPE", 1), "exam");
   assert.equal(kindOf("férié lundi de pâques", 1), "dayoff");
 });
+
+// ---------------------------------------------------------------------------
+// Glossary
+// ---------------------------------------------------------------------------
+const { glossaryFor, GLOSSARY } = require("../kinds.js");
+const pairs = (title) => glossaryFor(title).map((word) => `${word.term} = ${word.english}`);
+
+test("glossary: real ZEUS titles get their French words in English", () => {
+  assert.deepEqual(pairs("RATTRAPAGES S3"), ["Rattrapages = Resits", "S3 = Semester 3"]);
+  assert.deepEqual(pairs("EXAMEN 7 SPE"), ["Examen = Exam", "SPE = 2nd-year students"]);
+  assert.deepEqual(pairs("FERIE"), ["Férié = Public holiday"]);
+  assert.deepEqual(pairs("FLE (exchange)"), ["FLE = French as a foreign language"]);
+  assert.deepEqual(pairs("MINEURES"), ["Mineures = Minors (elective tracks)"]);
+  assert.deepEqual(pairs("Tutorat Fall 26 S1"), ["Tutorat = Tutoring", "S1 = Semester 1"]);
+  assert.deepEqual(pairs("atelier JAVA"), ["Atelier = Workshop"]);
+  assert.deepEqual(pairs("Réseaux"), ["Réseaux = Networks"]);
+});
+
+test("glossary: a phrase is read once, not also word by word", () => {
+  assert.deepEqual(pairs("forum stage"), ["Forum stage = Internship fair"]);
+  assert.deepEqual(pairs("Stage de fin d'études"), ["Stage = Internship"]);
+});
+
+test("glossary: English titles and words inside other words get nothing", () => {
+  assert.deepEqual(pairs("Kaggle Week"), []);
+  assert.deepEqual(pairs("Compilation"), []);
+  assert.deepEqual(pairs("Supervised learning"), []); // "sup" only as a word
+  assert.deepEqual(pairs("Spectral methods"), []);
+  assert.deepEqual(pairs(""), []);
+});
+
+test("glossary: the group code stays in its chip, not the English line", () => {
+  assert.deepEqual(pairs("GR1 - French for Fall 26 S1"), ["S1 = Semester 1"]);
+});
+
+test("glossary: every entry has a word, its English and a rule", () => {
+  for (const entry of GLOSSARY) {
+    assert.ok(entry.term && entry.english && entry.rule instanceof RegExp, entry.term);
+  }
+  assert.equal(new Set(GLOSSARY.map((entry) => entry.term)).size, GLOSSARY.length);
+});

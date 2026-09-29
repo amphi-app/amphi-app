@@ -39,7 +39,10 @@ Live at **https://amphi-app.github.io/**.
    in **Coming up** instead; ZEUS doesn't say which is which, so
    `kinds.js` works it out from the titles. If something lands in the
    wrong place, add its title to `tests/kinds.test.js` and adjust the
-   word lists. **Swipe left** for the timetable,
+   word lists. ZEUS titles are in French, so cards show the English for
+   the words they contain ("Rattrapages = Resits · S3 = Semester 3"), and
+   **ZEUS words in English** at the bottom of Home lists them all (the list
+   is `GLOSSARY` in `kinds.js`). **Swipe left** for the timetable,
    right to come back (or use the tabs at the bottom). The timetable opens
    on your next class. Day tabs show how many
    classes each day has (today is outlined in green); arrows move between
@@ -125,7 +128,7 @@ entry under a new ID.
 | `index.html` | Page structure: setup screens (link/upload, course picker) and the app itself (Home + Timetable pages, tab bar). |
 | `style.css` | All the looks — dark, mobile-first. Colors are tokens at the top. |
 | `ics.js` | Reads the `.ics` calendar format. No page code, so it's testable. |
-| `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title. Testable too. |
+| `kinds.js` | Decides whether an entry is a course, exam, event or day off, from its title, and holds the English glossary for ZEUS words. Testable too. |
 | `rooms.js` | Works out which rooms have no class booked at a given time, and which campus each room is on. Testable too. |
 | `friends.js` | Packs a timetable into a share link and reads it back; works out a friend's status and when you're both free. Testable too. |
 | `updates.js` | Matches a student's classes to the weekly data by ZEUS ID and works out what moved. Testable too. |

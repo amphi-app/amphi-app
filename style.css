@@ -53,7 +53,8 @@ button {
   margin: 0;
 }
 
-/* Errors float above everything (including the app pages); tap to dismiss. */
+/* Messages float above everything (including the app pages); they go away
+   on their own, or when tapped or swiped up. */
 .error {
   position: fixed;
   top: max(12px, env(safe-area-inset-top));
@@ -70,6 +71,7 @@ button {
   font-size: 0.9rem;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  touch-action: none;
 }
 
 /* ---- Shared buttons ---- */
@@ -528,6 +530,57 @@ button {
   background: #10281a;
   color: #86efac;
   border-color: #166534;
+}
+
+/* ---- Glossary: English for ZEUS words ---- */
+.class-gloss {
+  margin: -4px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.course-gloss {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.glossary {
+  margin-top: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.glossary summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.glossary .hint {
+  margin: 10px 0 6px;
+}
+
+.glossary dl {
+  margin: 0;
+}
+
+.glossary dl div {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.glossary dt {
+  flex: 0 0 38%;
+  font-weight: 600;
+}
+
+.glossary dd {
+  margin: 0;
+  color: var(--muted);
 }
 
 /* ---- Friends page ---- */
