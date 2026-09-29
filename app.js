@@ -1,5 +1,5 @@
 /*
-  ZEUS Schedule Viewer — app.js
+  Amphi — app.js
 
   This file does four jobs, in order:
     1. Parse a .ics file's text into a plain JavaScript array of event objects.
@@ -40,42 +40,41 @@ function colorForCourse(summary) {
   return PALETTE[hashString(summary) % PALETTE.length];
 }
 
-// A small embedded sample so you can see the app work without needing a
-// real ZEUS export yet. Times end in "Z" (UTC), exactly like real ZEUS
-// exports do — 06:30Z is 08:30 in Paris during summer time.
-const SAMPLE_ICS = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Sample//EN
-BEGIN:VEVENT
-SUMMARY:Algorithmique
-DTSTART:20260922T063000Z
-DTEND:20260922T083000Z
-LOCATION:Amphi B
-DESCRIPTION:
-END:VEVENT
-BEGIN:VEVENT
-SUMMARY:Bases de donnees GR A1
-DTSTART:20260922T090000Z
-DTEND:20260922T110000Z
-LOCATION:Salle 214
-DESCRIPTION:
-END:VEVENT
-BEGIN:VEVENT
-SUMMARY:Programmation systeme GR A1
-DTSTART:20260923T120000Z
-DTEND:20260923T150000Z
-LOCATION:Salle Info 3
-DESCRIPTION:Salle sous reserve de changement
-END:VEVENT
-BEGIN:VEVENT
-SUMMARY:Examen Mathematiques
-DTSTART:20260925T070000Z
-DTEND:20260925T090000Z
-LOCATION:Amphi A
-DESCRIPTION:2H EXAMEN
-END:VEVENT
-END:VCALENDAR
-`;
+// A small made-up timetable so you can see the app work without a ZEUS file.
+// It's built around the current week each time (a fixed date would soon be
+// in the past and show nothing), and written the way ZEUS writes its files:
+// times in UTC ("Z"), weekly courses repeating, one exam.
+const SAMPLE_WEEKS = 6;
+const SAMPLE_CLASSES = [
+  // [title, weekday (0 = Monday), start hour, hours, room, note]
+  ["Algorithmique", 0, 8.5, 2, "Amphi B", ""],
+  ["Bases de donnees GR A1", 0, 11, 2, "Salle 214", ""],
+  ["Programmation systeme GR A1", 2, 14, 3, "Salle Info 3", "Salle sous reserve de changement"],
+  ["TD Reseaux", 3, 10, 2, "Salle 108", ""],
+];
+
+function sampleICS() {
+  const monday = mondayOf(parisDateKey(new Date()));
+  const stamp = (date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const at = (dayKey, hour) => new Date(parisTime(dayKey, Math.floor(hour)).getTime() + (hour % 1) * 3600000);
+  const entry = (title, dayKey, hour, hours, room, note) => [
+    "BEGIN:VEVENT",
+    `SUMMARY:${title}`,
+    `DTSTART:${stamp(at(dayKey, hour))}`,
+    `DTEND:${stamp(at(dayKey, hour + hours))}`,
+    `LOCATION:${room}`,
+    `DESCRIPTION:${note}`,
+    "END:VEVENT",
+  ].join("\n");
+  const entries = [];
+  for (let week = 0; week < SAMPLE_WEEKS; week++) {
+    for (const [title, weekday, hour, hours, room, note] of SAMPLE_CLASSES) {
+      entries.push(entry(title, addDays(monday, week * 7 + weekday), hour, hours, room, note));
+    }
+  }
+  entries.push(entry("Examen Mathematiques", addDays(monday, 11), 9, 2, "Amphi A", "2H EXAMEN"));
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Amphi sample//EN", ...entries, "END:VCALENDAR"].join("\n");
+}
 
 // ---------------------------------------------------------------------------
 // STEP 2: Decide how to color/badge each event
@@ -586,6 +585,10 @@ messageBox.addEventListener("touchend", (event) => {
   if (dragged < -30) showError("");
   else messageBox.style.transform = "";
 });
+messageBox.addEventListener("touchcancel", () => {
+  swipeStartY = null;
+  messageBox.style.transform = "";
+});
 
 // ---------------------------------------------------------------------------
 // STEP 2 (continued): Hiding courses you don't take
@@ -762,6 +765,10 @@ function updateShowButton() {
 // real saved courses or timetable.
 let isSampleData = false;
 
+// Set when "Edit" asked for the file: open the course list once it's loaded,
+// instead of going straight back to the timetable.
+let wantsCourseList = false;
+
 function showFilteredSchedule() {
   const hidden = getHiddenCourseNames();
   const shown = allEvents.filter((event) => !hidden.has(event.summary));
@@ -805,6 +812,13 @@ function loadScheduleFromText(text, { isSample = false } = {}) {
     // to the timetable, minus anything you've hidden.
     renderCoursePicker(courses, hidden);
     updateShowButton();
+    const openCourseList = wantsCourseList && !isSample;
+    wantsCourseList = false;
+    if (openCourseList) {
+      document.getElementById("upload-section").hidden = true;
+      document.getElementById("week-view").hidden = true;
+      return;
+    }
     showFilteredSchedule();
   } catch (err) {
     showError("Couldn't read that file — is it a valid .ics export from ZEUS?");
@@ -817,7 +831,7 @@ function loadScheduleFromText(text, { isSample = false } = {}) {
 // ---------------------------------------------------------------------------
 // Room bookings come from data/rooms.json, which ships with the app: the
 // maintainer builds it from the whole-school ZEUS file with
-// `npm run rooms` (tools/build-rooms.js). It holds only room names and busy
+// `npm run data` (tools/build-data.js). It holds only room names and busy
 // times. Being on Amphi's own site, the browser lets the app read it, and
 // the service worker keeps a copy for offline use. Room logic: rooms.js.
 
@@ -1229,7 +1243,7 @@ async function applyWeeklyUpdates() {
     saveAlerts([...loadAlerts().filter((alert) => !known.has(key(alert))), ...fresh]);
   }
   // Refresh the screen only if the timetable is open, not mid-setup.
-  if (!document.getElementById("week-view").hidden) showWeekView(events, exportedAt);
+  if (!isSampleData && !document.getElementById("week-view").hidden) showWeekView(events, exportedAt);
 }
 
 function roomsLabel(location) {
@@ -1308,10 +1322,13 @@ document.getElementById("ics-input").addEventListener("change", (event) => {
   reader.onload = () => loadScheduleFromText(reader.result);
   reader.onerror = () => showError("Couldn't read that file.");
   reader.readAsText(file);
+  // Clear the choice, so choosing the same file again (a fresh download
+  // with the same name) still loads it.
+  event.target.value = "";
 });
 
 document.getElementById("load-sample-btn").addEventListener("click", () => {
-  loadScheduleFromText(SAMPLE_ICS, { isSample: true });
+  loadScheduleFromText(sampleICS(), { isSample: true });
 });
 
 document.getElementById("course-list").addEventListener("change", updateShowButton);
@@ -1331,12 +1348,14 @@ document.getElementById("edit-courses-btn").addEventListener("click", async () =
   if (allEvents.length === 0 && loadSavedUrl()) {
     await loadFromURL(loadSavedUrl());
   }
-  document.getElementById("week-view").hidden = true;
   if (allEvents.length === 0) {
-    document.getElementById("upload-section").hidden = false;
-    showError("To change your courses, load your ZEUS link or file again. Courses you've hidden will stay hidden.");
+    // Only your own classes are saved, so the full course list needs the file.
+    openSourceSettings();
+    wantsCourseList = true;
+    showError("To change your courses, choose your ZEUS file again. Courses you've hidden will stay hidden.");
     return;
   }
+  document.getElementById("week-view").hidden = true;
   const hidden = isSampleData ? getHiddenCourseNames() : loadHiddenCourses();
   renderCoursePicker(getUniqueCourses(allEvents), hidden);
   updateShowButton();
@@ -1392,6 +1411,7 @@ document.getElementById("error-message").addEventListener("click", () => showErr
 
 document.getElementById("back-btn").addEventListener("click", () => {
   showError("");
+  wantsCourseList = false;
   document.getElementById("upload-section").hidden = true;
   document.getElementById("week-view").hidden = false;
 });
@@ -1460,15 +1480,17 @@ document.addEventListener("visibilitychange", () => {
   loadRoomData();
   applyWeeklyUpdates();
   const saved = loadMySchedule();
-  if (saved && !document.getElementById("week-view").hidden) {
+  if (saved && !isSampleData && !document.getElementById("week-view").hidden) {
+    renderUpdatedLabel(saved.savedAt);
     renderHome(saved.savedAt);
+    renderWeek();
     renderFriends();
   }
   reloadIfNewVersion();
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v21";
+const APP_VERSION = "amphi-v22";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {
