@@ -867,9 +867,17 @@ function renderChips(containerId, options, selected, onPick) {
   }
 }
 
-// Paris hours when free rooms are shown.
+// When free rooms are shown (Paris time). Outside these hours almost every
+// room looks free because nothing is booked, but the buildings may be closed
+// (ZEUS doesn't list opening hours).
 const CAMPUS_OPENS = 8;
 const CAMPUS_CLOSES = 20;
+
+function campusLikelyOpen(at) {
+  const hour = Number(hourFormatter.format(at));
+  const sunday = weekdayShort.format(keyToDate(parisDateKey(at))) === "Sun";
+  return !sunday && hour >= CAMPUS_OPENS && hour < CAMPUS_CLOSES;
+}
 
 function renderRooms() {
   const status = document.getElementById("rooms-status");
@@ -885,6 +893,10 @@ function renderRooms() {
   updatedLabel.textContent = `ZEUS data: ${updated.text.toLowerCase()}`;
   updatedLabel.classList.toggle("is-stale", updated.days >= 7);
 
+  // Later times only when campus is likely open then; "Now" always stays.
+  const hoursChoices = TIME_CHOICES.filter((hours) =>
+    hours === 0 || campusLikelyOpen(new Date(Date.now() + hours * 3600000)));
+  if (!hoursChoices.includes(roomsHoursAhead)) roomsHoursAhead = 0;
   const at = new Date(Date.now() + roomsHoursAhead * 3600000);
   // Filtering here too, in case this data was saved before unplaced rooms were dropped.
   const campuses = [...new Set(Object.keys(roomData.occupancy).map(campusOf))]
@@ -897,7 +909,7 @@ function renderRooms() {
     try { localStorage.setItem(ROOMS_CAMPUS_KEY, campus); } catch { /* not remembered */ }
     renderRooms();
   });
-  renderChips("time-chips", TIME_CHOICES.map((hours) => ({
+  renderChips("time-chips", hoursChoices.map((hours) => ({
     value: hours,
     label: hours === 0 ? "Now" : timeFormatter.format(new Date(Date.now() + hours * 3600000)),
   })), roomsHoursAhead, (hours) => {
@@ -905,14 +917,11 @@ function renderRooms() {
     renderRooms();
   });
 
-  // Outside 8:00–20:00 almost every room looks free because nothing is
-  // booked, but the buildings may be closed (ZEUS doesn't list opening hours).
   const list = document.getElementById("rooms-list");
-  const hour = Number(hourFormatter.format(at));
-  if (hour < CAMPUS_OPENS || hour >= CAMPUS_CLOSES) {
+  if (!campusLikelyOpen(at)) {
     document.getElementById("rooms-subtitle").textContent =
       `Campus likely closed ${roomsHoursAhead === 0 ? "right now" : `at ${timeFormatter.format(at)}`}`;
-    list.innerHTML = `<p class="empty-day">Free rooms are shown from ${CAMPUS_OPENS}:00 to ${CAMPUS_CLOSES}:00.</p>`;
+    list.innerHTML = `<p class="empty-day">Free rooms are shown Monday to Saturday, ${CAMPUS_OPENS}:00 to ${CAMPUS_CLOSES}:00.</p>`;
     return;
   }
 
@@ -1459,7 +1468,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v20";
+const APP_VERSION = "amphi-v21";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

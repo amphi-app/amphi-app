@@ -64,9 +64,10 @@ Live at **https://amphi-app.github.io/**.
    (see "Weekly data update"). It says "no class booked", not
    "free": a room can still be locked or used informally, and the list is
    only as fresh as the last update (about 2% of room bookings change per
-   week). Outside 8:00–20:00 (Paris time) the list is hidden and it says
-   "Campus likely closed", since almost every room looks free when nothing
-   is booked. Campuses are recognised from room names by `CAMPUS_RULES` in
+   week). On Sundays and outside 8:00–20:00 (Paris time) the list is
+   hidden and it says "Campus likely closed", since almost every room looks
+   free when nothing is booked; later-time choices that fall in those hours
+   aren't offered. Campuses are recognised from room names by `CAMPUS_RULES` in
    `rooms.js`; rooms on other campuses and sites are left out.
 6. **Install it** (once it's online): on iPhone, Safari → Share → "Add to
    Home Screen"; on Android, Chrome → menu → "Install app". It then opens
