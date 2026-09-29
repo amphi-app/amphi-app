@@ -867,6 +867,10 @@ function renderChips(containerId, options, selected, onPick) {
   }
 }
 
+// Paris hours when free rooms are shown.
+const CAMPUS_OPENS = 8;
+const CAMPUS_CLOSES = 20;
+
 function renderRooms() {
   const status = document.getElementById("rooms-status");
   status.hidden = Boolean(roomData);
@@ -901,6 +905,17 @@ function renderRooms() {
     renderRooms();
   });
 
+  // Outside 8:00–20:00 almost every room looks free because nothing is
+  // booked, but the buildings may be closed (ZEUS doesn't list opening hours).
+  const list = document.getElementById("rooms-list");
+  const hour = Number(hourFormatter.format(at));
+  if (hour < CAMPUS_OPENS || hour >= CAMPUS_CLOSES) {
+    document.getElementById("rooms-subtitle").textContent =
+      `Campus likely closed ${roomsHoursAhead === 0 ? "right now" : `at ${timeFormatter.format(at)}`}`;
+    list.innerHTML = `<p class="empty-day">Free rooms are shown from ${CAMPUS_OPENS}:00 to ${CAMPUS_CLOSES}:00.</p>`;
+    return;
+  }
+
   // "Rest of the day" when a room's next booking isn't today (or there's none).
   const today = parisDateKey(at);
   const rooms = freeRoomsAt(roomData.occupancy, at)
@@ -914,7 +929,6 @@ function renderRooms() {
     `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"} with no class booked ` +
     (roomsHoursAhead === 0 ? "right now" : `at ${timeFormatter.format(at)}`);
 
-  const list = document.getElementById("rooms-list");
   list.innerHTML = "";
   if (rooms.length === 0) {
     list.innerHTML = `<p class="empty-day">No rooms without a class at this time.</p>`;
@@ -1445,7 +1459,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v19";
+const APP_VERSION = "amphi-v20";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {
