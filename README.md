@@ -114,6 +114,15 @@ the student loaded after the weekly data was made. Entries that disappear
 are flagged "Not in ZEUS", not deleted, since ZEUS sometimes re-creates an
 entry under a new ID.
 
+### Releasing a change
+
+Nobody reinstalls anything. Bump `CACHE_NAME` in `sw.js` and `APP_VERSION`
+in `app.js` together (a test fails if they differ), then push. Each phone
+picks up the new version the next time Amphi opens, or when it comes back on
+screen from the background (it reloads by itself, unless the student is
+typing). Weekly data (`data/`) needs no version bump: it is re-checked every
+time Amphi opens or comes back on screen.
+
 ## Working on it
 
 - **Run it locally:** double-click `index.html`. Everything works except

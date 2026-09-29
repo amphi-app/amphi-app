@@ -1437,7 +1437,53 @@ if (savedUrl) {
   loadFromURL(savedUrl, { isAutoLoad: true });
 }
 
-// 3. Let the app be installed to the home screen and open offline.
+// 3. Stay up to date without anyone reinstalling. An installed app is rarely
+//    restarted: switching back to it resumes the old page from memory. So
+//    each time Amphi comes back on screen, fetch the weekly data again,
+//    refresh anything that depends on the time ("Now", free rooms), and if a
+//    new version of Amphi has been published, quietly reload into it.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  loadRoomData();
+  applyWeeklyUpdates();
+  const saved = loadMySchedule();
+  if (saved && !document.getElementById("week-view").hidden) {
+    renderHome(saved.savedAt);
+    renderFriends();
+  }
+  reloadIfNewVersion();
+});
+
+// Must match CACHE_NAME in sw.js (a test checks); both change with every release.
+const APP_VERSION = "amphi-v18";
+const RELOAD_KEY = "zeus-reloaded-for";
+
+async function reloadIfNewVersion() {
+  let latest;
+  try {
+    const response = await fetch("sw.js", { cache: "no-store" });
+    latest = (await response.text()).match(/CACHE_NAME = "([^"]+)"/)?.[1];
+  } catch {
+    return; // offline: check next time
+  }
+  if (!latest || latest === APP_VERSION) return;
+  // Don't reload in the middle of something: typing, or choosing courses.
+  const busy = document.activeElement?.matches("input, textarea")
+    || document.getElementById("week-view").hidden;
+  if (busy) return;
+  // The phone may still hand back the old files for a few minutes; try at
+  // most once every 15 minutes so that can't turn into a reload loop.
+  try {
+    const last = JSON.parse(localStorage.getItem(RELOAD_KEY) || "null");
+    if (last && last.version === latest && Date.now() - last.at < 15 * 60000) return;
+    localStorage.setItem(RELOAD_KEY, JSON.stringify({ version: latest, at: Date.now() }));
+  } catch {
+    return; // can't remember attempts, so don't risk a loop
+  }
+  location.reload();
+}
+
+// 4. Let the app be installed to the home screen and open offline.
 //    Service workers only run on a real web address, not a double-clicked file.
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("sw.js").catch(console.error);

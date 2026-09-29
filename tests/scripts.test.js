@@ -29,3 +29,9 @@ test("no two scripts define the same top-level name", () => {
   const clashes = [...definedIn].filter(([, files]) => files.length > 1).map(([name, files]) => `${name} (${files.join(", ")})`);
   assert.deepEqual(clashes, []);
 });
+
+test("app.js knows its own version (it must match CACHE_NAME in sw.js)", () => {
+  const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8").match(/CACHE_NAME = "([^"]+)"/)[1];
+  const app = fs.readFileSync(path.join(root, "app.js"), "utf8").match(/APP_VERSION = "([^"]+)"/)[1];
+  assert.equal(app, sw, "bump both together on every release");
+});
