@@ -200,3 +200,10 @@ browsers block the app from reading it (the browser rule called CORS).
 Opening the link yourself still works; only a website's code is blocked.
 Until ZEUS allows Amphi, students download the file and upload it. The
 link-loading code is already in the app and works as soon as ZEUS allows it.
+
+## Licence
+
+The code is under the MIT licence (see `LICENSE`): anyone may use, copy and
+change it, keeping the copyright notice. The licence covers the code only.
+The files in `data/` are built from EPITA's ZEUS timetable and are not
+covered by it.

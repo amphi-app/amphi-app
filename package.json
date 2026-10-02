@@ -2,6 +2,7 @@
   "name": "amphi",
   "private": true,
   "description": "An English, mobile-first viewer for EPITA's ZEUS timetable.",
+  "license": "MIT",
   "scripts": {
     "test": "node --test",
     "data": "node tools/build-data.js"
