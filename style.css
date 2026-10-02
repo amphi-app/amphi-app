@@ -430,6 +430,22 @@ button {
   border: 1px solid #a16207;
 }
 
+.install-card {
+  margin-bottom: 28px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.changes-head .link-btn {
+  white-space: nowrap;
+}
+
+.install-card .hint {
+  margin: 4px 0 0;
+}
+
 .changes-head {
   display: flex;
   justify-content: space-between;

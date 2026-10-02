@@ -1,0 +1,21 @@
+# Runs the unit tests (npm test) on every push and pull request, so a change
+# that breaks the ZEUS parsing, kinds, rooms, friends or updates logic shows
+# up as a red cross on GitHub before students get it.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test

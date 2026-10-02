@@ -489,8 +489,40 @@ function describeNext(event) {
 // How many exams/events/days off "Coming up" shows — just the nearest few.
 const COMING_UP_LIMIT = 3;
 
+// Installing puts Amphi on the home screen like an app, full screen and
+// offline. Phones hide how to do it, so Home says how once, until it's
+// installed or dismissed. Computers don't get the card.
+const INSTALL_HINT_KEY = "zeus-install-hint-dismissed";
+
+function installSteps() {
+  const ua = navigator.userAgent;
+  const iPhone = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (iPhone) {
+    return /CriOS|FxiOS|EdgiOS/.test(ua)
+      ? "Open amphi-app.github.io in Safari, tap Share, then \"Add to Home Screen\"."
+      : "Tap Share (the square with an arrow), then \"Add to Home Screen\".";
+  }
+  if (/Android/.test(ua)) return "Tap the browser menu (⋮), then \"Install app\" or \"Add to Home screen\".";
+  return "";
+}
+
+function renderInstallCard() {
+  const installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let dismissed = false;
+  try { dismissed = Boolean(localStorage.getItem(INSTALL_HINT_KEY)); } catch { /* show it */ }
+  const steps = installSteps();
+  document.getElementById("install-steps").textContent = steps;
+  document.getElementById("install-card").hidden = installed || dismissed || !steps || isSampleData;
+}
+
+document.getElementById("dismiss-install-btn").addEventListener("click", () => {
+  try { localStorage.setItem(INSTALL_HINT_KEY, "1"); } catch { /* shown again next time */ }
+  document.getElementById("install-card").hidden = true;
+});
+
 function renderHome(updatedAt) {
   renderProfile();
+  renderInstallCard();
   renderChanges();
   const entries = summarizeCourses(shownEvents);
   const courses = entries.filter((entry) => classify(entry.name).kind === "course");
@@ -1562,7 +1594,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v25";
+const APP_VERSION = "amphi-v26";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

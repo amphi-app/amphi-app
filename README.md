@@ -127,6 +127,12 @@ the student loaded after the weekly data was made. Entries that disappear
 are flagged "Not in ZEUS", not deleted, since ZEUS sometimes re-creates an
 entry under a new ID.
 
+### Tests on GitHub
+
+`.github/workflows/test.yml` runs `npm test` on every push and pull request.
+A red cross next to a commit on GitHub means a test failed: fix it before
+students pick up the change.
+
 ### Releasing a change
 
 Nobody reinstalls anything. Bump `CACHE_NAME` in `sw.js` and `APP_VERSION`
