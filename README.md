@@ -127,11 +127,28 @@ the student loaded after the weekly data was made. Entries that disappear
 are flagged "Not in ZEUS", not deleted, since ZEUS sometimes re-creates an
 entry under a new ID.
 
-### Tests on GitHub
+### Tests
 
-`.github/workflows/test.yml` runs `npm test` on every push and pull request.
-A red cross next to a commit on GitHub means a test failed: fix it before
-students pick up the change.
+Two sets, and GitHub runs both on every push and pull request
+(`.github/workflows/test.yml`). A red cross next to a commit on GitHub means
+a test failed: fix it before students pick up the change.
+
+- **`npm test`**: the logic (reading ZEUS files, kinds, glossary, rooms,
+  friends, weekly updates). Nothing to install.
+- **`npm run test:browser`** (`tests/browser/`): opens Amphi on a
+  phone-sized screen in Chromium and uses it like a student would: Home,
+  timetable and the red now line, setup and Edit, messages, Rooms and its
+  opening hours, Friends, change alerts, the install card, and self-updating.
+  It needs Playwright once:
+
+      npm install --no-save playwright@1.56.1
+      npx playwright install chromium
+      npm run test:browser
+
+  The browser tests run at a fixed moment (Wednesday 7 Oct 2026, 10:15
+  Paris time) on made-up ZEUS data from `tests/browser/fixtures.js`: invented
+  courses, rooms and IDs. Never put a real ZEUS export in the repository; if a
+  test needs a new situation, add it to the fixtures.
 
 ### Releasing a change
 

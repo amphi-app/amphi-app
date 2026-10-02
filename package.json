@@ -4,7 +4,8 @@
   "description": "An English, mobile-first viewer for EPITA's ZEUS timetable.",
   "license": "MIT",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node --test tests/browser/*.test.js",
     "data": "node tools/build-data.js"
   }
 }
