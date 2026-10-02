@@ -45,7 +45,7 @@ test("French words get an English line, and the glossary lists them A to Z", asy
   assert.deepEqual(terms, [...terms].sort((a, b) => a.localeCompare(b, "fr")));
 
   const contact = page.locator("#home-page .contact-line");
-  assert.match(await contact.textContent(), /Unofficial student project · Contact us: dev\.vashisth@epita\.fr/);
+  assert.match(await contact.textContent(), /Unofficial student project\. ZEUS remains the official timetable\.Contact us: dev\.vashisth@epita\.fr/);
   assert.equal(await contact.locator("a").getAttribute("href"), "mailto:dev.vashisth@epita.fr");
 
   assert.deepEqual(errors, []);
