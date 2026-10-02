@@ -1562,7 +1562,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v23";
+const APP_VERSION = "amphi-v24";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

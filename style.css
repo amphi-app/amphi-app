@@ -546,6 +546,18 @@ button {
   font-size: 0.78rem;
 }
 
+/* Small "unofficial · contact" line at the bottom of Home and setup. */
+.contact-line {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.contact-line a {
+  color: inherit;
+}
+
 .glossary {
   margin-top: 24px;
   background: var(--surface);
