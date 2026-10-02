@@ -8,6 +8,10 @@ Amphi is an unofficial student project. No login handling, no server, no
 external services: it's a handful of plain files that run in any browser.
 Live at **https://amphi-app.github.io/**.
 
+Amphi was built by Dev Vashisth with the help of an AI coding assistant
+(Claude). Dev designed the features, tested it with real ZEUS data, and is
+responsible for maintaining it.
+
 ## Using it
 
 1. **Get your group's ZEUS data (once).** Log into `zeus.ionis-it.com`
