@@ -89,3 +89,13 @@ test("corridors, gardens, remote sessions and rarely used places are not rooms",
   const rooms = Object.keys(buildOccupancy(events, ...window));
   assert.deepEqual(rooms.sort(), ["A202", "KB202", "KB601", "Salle machine 302"]);
 });
+
+test("servedLocation: Kremlin-Bicêtre / Villejuif rooms, or no room, and nothing elsewhere", () => {
+  const { servedLocation } = require("../rooms.js");
+  for (const yes of ["", "KB202", "A202, A207", "303 (KB3)", "KB401 (amphi 401), EpiRoof", "SM Cisco - KB105, 0, Salle machine 311"]) {
+    assert.equal(servedLocation(yes), true, yes);
+  }
+  for (const no of ["V102", "331 - Majeure IF", "Paritalie - 3ème Apprentissage 1", "1 Day (Campus Cyber)", "Jardin", "SM-3, Labo Majeure", "KB202, Turing"]) {
+    assert.equal(servedLocation(no), false, no);
+  }
+});

@@ -105,8 +105,12 @@ After changing any app file, bump `CACHE_NAME` in `sw.js` (`amphi-v8` →
    and download the file.
 2. In this folder, run `npm run data -- path/to/that-file.ics`. It writes:
    - `data/rooms.json`: which rooms are booked when (Rooms tab).
-   - `data/updates.json`: every entry's latest time and room, by ZEUS ID.
-   Neither contains course names, groups or people.
+   - `data/updates.json`: the latest time and room, by ZEUS ID, of every
+     entry at Kremlin-Bicêtre or Villejuif (or with no room). Entries at
+     other sites are left out (`servedLocation` in `rooms.js`), and the app
+     never flags a class elsewhere as missing.
+   Neither contains course names, groups or people. Real ZEUS IDs are kept
+   out of `tests/` too (the tests use made-up ones).
 3. Commit and push the `data` folder. Everyone's app picks it up the next
    time it opens with internet: rooms refresh, and each student's own
    timetable is corrected where ZEUS moved a class or changed its room,
@@ -151,7 +155,6 @@ time Amphi opens or comes back on screen.
 | `sw.js` | Service worker: keeps copies of the app files so it opens offline. |
 | `manifest.webmanifest`, `icons/` | Name and icons used when installed to a home screen. |
 | `tests/` | Automated tests for `ics.js`, `kinds.js` (real ZEUS titles), `rooms.js`, `friends.js`, `updates.js`, and a check that no two browser scripts clash. |
-| `sample.ics` | The small fake timetable behind "try it with a sample". |
 
 ### How the code flows
 

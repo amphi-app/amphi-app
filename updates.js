@@ -7,6 +7,10 @@
   the next few weeks, its ID, time and room (no course names). Each phone
   looks up its own classes by ID and corrects anything that moved.
 
+  Only entries at Kremlin-Bicêtre or Villejuif (or with no room) are
+  published; `isCovered` (servedLocation in rooms.js) decides, both when the
+  file is built and when a phone checks for classes that went missing.
+
   What this can't do: add classes that are new to your group (a new entry
   doesn't say which group it's for). Entries that vanish are flagged, not
   deleted, because ZEUS sometimes re-creates an entry under a new ID.
@@ -26,14 +30,14 @@ function shortId(uid) {
 const minuteOf = (date) => Math.floor(date.getTime() / 60000);
 
 /** The published file: times are minutes after `base`; rooms are stored once. */
-function buildUpdates(events, exportedAt, weeks = UPDATE_WEEKS) {
+function buildUpdates(events, exportedAt, weeks = UPDATE_WEEKS, isCovered = () => true) {
   const base = minuteOf(exportedAt) - 24 * 60;
   const end = base + 24 * 60 + weeks * 7 * 24 * 60;
   const locations = [];
   const locationIndex = new Map();
   const entries = {};
   for (const event of events) {
-    if (!event.uid) continue;
+    if (!event.uid || !isCovered(event.location || "")) continue;
     const start = minuteOf(event.start);
     if (start < base || start >= end) continue;
     const location = event.location || "";
@@ -52,7 +56,7 @@ function buildUpdates(events, exportedAt, weeks = UPDATE_WEEKS) {
  * change as { type: "moved" | "room" | "missing", summary, before, after }.
  * Only call this when the published data is newer than your own copy.
  */
-function applyUpdates(myEvents, updates) {
+function applyUpdates(myEvents, updates, isCovered = () => true) {
   const changes = [];
   const events = myEvents.map((event) => {
     if (!event.uid) return event;
@@ -60,8 +64,10 @@ function applyUpdates(myEvents, updates) {
     const startMinute = minuteOf(event.start);
 
     if (!record) {
-      // Only entries the published data should have covered can be "missing".
-      const covered = startMinute >= updates.base && startMinute < updates.end;
+      // Only entries the published data should have covered can be "missing":
+      // in its weeks, and somewhere it covers (a class elsewhere is left out).
+      const covered = startMinute >= updates.base && startMinute < updates.end &&
+        isCovered(event.location || "");
       if (!covered || event.missing) return event;
       changes.push({ type: "missing", summary: event.summary, before: event, after: event });
       return { ...event, missing: true };

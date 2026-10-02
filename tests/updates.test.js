@@ -5,9 +5,10 @@ const { shortId, buildUpdates, applyUpdates, upcomingChanges } = require("../upd
 const at = (day, hhmm) => new Date(`2026-10-${day}T${hhmm}:00Z`);
 const entry = (uid, summary, day, from, to, location) => ({ uid, summary, start: at(day, from), end: at(day, to), location });
 
-const U1 = "e8f1e207-b6ed-4721-b823-27f62bf507e1";
-const U2 = "a25eb17a-bddd-4891-ba15-bfb1faa3be72";
-const U3 = "0795c892-3ebf-453b-8009-19c110328c0e";
+// Made-up IDs in ZEUS's format (real ZEUS IDs stay out of the repository).
+const U1 = "11111111-2222-4333-8444-555555555555";
+const U2 = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const U3 = "12345678-90ab-4cde-8f01-23456789abcd";
 
 const mine = [
   entry(U1, "Programmation", "05", "14:00", "16:00", "KB202"),
@@ -17,7 +18,7 @@ const mine = [
 const exportedAt = at("04", "20:00");
 
 test("ZEUS IDs are shortened, other IDs kept as they are", () => {
-  assert.equal(shortId(U1), "e8f1e207b6ed");
+  assert.equal(shortId(U1), "111111112222");
   assert.equal(shortId("sample-id"), "sample-id");
 });
 
@@ -57,6 +58,18 @@ test("a class that reappears loses its missing flag", () => {
   const flagged = [{ ...mine[0], missing: true }];
   const { events } = applyUpdates(flagged, buildUpdates([mine[0]], exportedAt));
   assert.equal(events[0].missing, false);
+});
+
+test("only covered places are published, and classes elsewhere are never flagged missing", () => {
+  const atKB = (location) => location === "" || location.startsWith("KB");
+  const school = [entry(U1, "Programmation", "05", "14:00", "16:00", "KB202"), entry(U2, "Algorithmique", "06", "08:00", "10:00", "Paritalie")];
+  const updates = buildUpdates(school, exportedAt, undefined, atKB);
+  assert.deepEqual(updates.locations, ["KB202"], "the other site's name isn't published");
+  assert.equal(Object.keys(updates.entries).length, 1);
+  const myClasses = [mine[0], { ...mine[1], location: "Paritalie" }, mine[2]];
+  const { changes } = applyUpdates(myClasses, updates, atKB);
+  assert.deepEqual(changes.map((c) => [c.type, c.summary]), [["missing", "Réseaux"]],
+    "the Paritalie class is left alone; the KB class that vanished is still flagged");
 });
 
 test("alerts only cover the next 7 days", () => {

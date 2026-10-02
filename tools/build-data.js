@@ -2,7 +2,8 @@
   Turns a whole-school ZEUS export into the two files every student's app
   loads, so nobody but the maintainer downloads anything:
     data/rooms.json    which rooms are booked when (Rooms tab)
-    data/updates.json  each entry's latest time and room, by ZEUS ID
+    data/updates.json  each entry's latest time and room, by ZEUS ID, for
+                       entries at Kremlin-Bicêtre or Villejuif
                        (keeps everyone's timetable up to date; updates.js)
   Neither contains course names, groups or people.
 
@@ -13,7 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parseICS } = require("../ics.js");
-const { buildOccupancy } = require("../rooms.js");
+const { buildOccupancy, servedLocation } = require("../rooms.js");
 const { buildUpdates } = require("../updates.js");
 
 const WEEKS = 8;
@@ -53,7 +54,8 @@ function write(name, content) {
   return `${name} (${Math.round(fs.statSync(file).size / 1024)} KB)`;
 }
 
-const updates = buildUpdates(events, exportedAt);
+// Kremlin-Bicêtre and Villejuif only, like the rooms (see servedLocation).
+const updates = buildUpdates(events, exportedAt, WEEKS, servedLocation);
 const written = [
   write("rooms.json", { exportedAt: exportedAt.toISOString(), occupancy }),
   write("updates.json", updates),

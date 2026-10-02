@@ -1300,7 +1300,7 @@ async function applyWeeklyUpdates() {
   // Never let older data undo a timetable file the student loaded later.
   if (exportedAt <= saved.savedAt) return;
 
-  const { events, changes } = applyUpdates(saved.events, updates);
+  const { events, changes } = applyUpdates(saved.events, updates, servedLocation);
   for (const change of changes) {
     if (change.type !== "missing") change.after.changed = change.type;
   }
@@ -1562,7 +1562,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v24";
+const APP_VERSION = "amphi-v25";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

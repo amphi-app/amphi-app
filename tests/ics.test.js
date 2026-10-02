@@ -17,7 +17,7 @@ function event(fields) {
 
 test("parses a ZEUS-style event: UTC times, trimmed title, escaped text", () => {
   const [parsed] = parseICS(calendar(event([
-    "UID:e8f1e207-b6ed-4721-b823-27f62bf507e1",
+    "UID:11111111-2222-4333-8444-555555555555",
     `DTSTART:${YEAR}0922T063000Z`,
     `DTEND:${YEAR}0922T083000Z`,
     "SUMMARY: Anglais général 1",
@@ -25,7 +25,7 @@ test("parses a ZEUS-style event: UTC times, trimmed title, escaped text", () => 
     "DESCRIPTION:Ligne 1\\nLigne 2",
   ])));
 
-  assert.equal(parsed.uid, "e8f1e207-b6ed-4721-b823-27f62bf507e1");
+  assert.equal(parsed.uid, "11111111-2222-4333-8444-555555555555");
   assert.equal(parsed.summary, "Anglais général 1");
   assert.equal(parsed.location, "323 - Salle Machine, 322 - Salle Machine");
   assert.equal(parsed.description, "Ligne 1\nLigne 2");

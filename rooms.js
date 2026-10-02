@@ -35,6 +35,19 @@ function campusOf(room) {
 }
 
 /**
+ * Whether a ZEUS location is one Amphi covers: no room at all, or at least one
+ * room at Kremlin-Bicêtre or Villejuif and nothing at another site (corridors
+ * and placeholders like "0" don't count either way). Weekly updates only
+ * include these, so the published file names no other sites.
+ */
+function servedLocation(location = "") {
+  const names = roomNames(location);
+  if (names.length === 0) return true;
+  const rooms = names.filter((name) => !NOT_A_ROOM.test(name));
+  return rooms.length > 0 && rooms.every((room) => campusOf(room) !== OTHER_CAMPUS);
+}
+
+/**
  * Turns the whole-school events into { room: [[startMinute, endMinute], ...] }
  * for bookings between `from` and `until` (Dates). Times are whole minutes
  * since 1970, which keeps the saved copy small.
@@ -103,5 +116,5 @@ function freeRoomsAt(occupancy, at, minMinutes = 30) {
 
 // Lets Node (the tests) load this file too; browsers skip this block.
 if (typeof module !== "undefined") {
-  module.exports = { roomNames, campusOf, buildOccupancy, freeRoomsAt, mergeIntervals };
+  module.exports = { roomNames, campusOf, servedLocation, buildOccupancy, freeRoomsAt, mergeIntervals };
 }
