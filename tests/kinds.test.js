@@ -80,3 +80,14 @@ test("glossary: every entry has a word, its English and a rule", () => {
   }
   assert.equal(new Set(GLOSSARY.map((entry) => entry.term)).size, GLOSSARY.length);
 });
+
+test("glossary: phrases are translated as a whole, not word by word", () => {
+  assert.deepEqual(pairs("Contrôle de cours de maths (cf répartition sur Moodle)"),
+    ["Contrôle de cours de maths = Maths class test", "cf répartition sur Moodle = see Moodle for which room you're in"]);
+  assert.deepEqual(pairs("Controle de cours de maths"), ["Contrôle de cours de maths = Maths class test"]);
+  assert.deepEqual(pairs("Contrôle continu"), ["Contrôle continu = Continuous assessment"]);
+  assert.ok(pairs("Politiques de Sécurité et de Management des Systèmes d'Information")
+    .includes("Systèmes d'information = Information systems"));
+  assert.ok(!pairs("Analyse Systèmes").includes("Analyse = Calculus"), "Analyse only means calculus in maths");
+  assert.ok(pairs("Réunion délégués mi semestre S5 FISA").includes("Délégués = Class representatives"));
+});

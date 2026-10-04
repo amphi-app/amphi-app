@@ -8,7 +8,7 @@
   Requests to other sites (like ZEUS) are left completely alone.
 */
 
-const CACHE_NAME = "amphi-v29";
+const CACHE_NAME = "amphi-v30";
 const APP_FILES = [
   "./",
   "./index.html",

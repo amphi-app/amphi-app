@@ -43,6 +43,14 @@ function kindOf(title, timesInFile) {
 // Home list only (the card already says it another way, like the group chip).
 // `inTitle` builds the pair from what matched, for words with a number.
 const GLOSSARY = [
+  // Phrases come first, so their words aren't also translated one by one
+  // ("Contrôle de cours" is a class test, not "Test · Class").
+  { term: "Contrôle de cours de maths", english: "Maths class test", rule: /\bcontroles? de cours de maths?\b/ },
+  { term: "Contrôle de cours", english: "Class test", rule: /\bcontroles? de cours\b/ },
+  { term: "Contrôle continu", english: "Continuous assessment", rule: /\bcontroles? continus?\b/ },
+  { term: "cf répartition sur Moodle", english: "see Moodle for which room you're in", rule: /\bcf\.? repartition sur moodle\b/ },
+  { term: "Mi-semestre", english: "Mid-semester", rule: /\bmi[- ]semestres?\b/ },
+  { term: "Systèmes d'information", english: "Information systems", rule: /\bsystemes? d.information\b/ },
   { term: "Forum stage", english: "Internship fair", rule: /\bforum stages?\b/ },
   { term: "Examen", english: "Exam", plural: ["Examens", "Exams"], rule: /\bexamens?\b/ },
   { term: "Partiel", english: "Midterm exam", plural: ["Partiels", "Midterm exams"], rule: /\bpartiels?\b/ },
@@ -71,6 +79,9 @@ const GLOSSARY = [
   { term: "Rentrée", english: "Start of term", rule: /\brentree\b/ },
   { term: "Réunion", english: "Meeting", rule: /\breunions?\b/ },
   { term: "Accueil", english: "Welcome", rule: /\baccueil\b/ },
+  { term: "Délégués", english: "Class representatives", rule: /\bdelegues?\b/ },
+  { term: "Répartition", english: "Allocation (which room or group you're in)", rule: /\brepartitions?\b/ },
+  { term: "FISA", english: "Apprenticeship (work-study) track", rule: /\bfisa\b/ },
   { term: "Conférence", english: "Talk", rule: /\bconferences?\b/ },
   // Subjects (look-alikes such as "Compilation" are left out)
   { term: "Réseaux", english: "Networks", rule: /\breseaux?\b/ },
@@ -79,7 +90,7 @@ const GLOSSARY = [
   { term: "Mathématiques", english: "Mathematics", rule: /\bmathematiques\b/ },
   { term: "Probabilités", english: "Probability", rule: /\bprobabilites?\b/ },
   { term: "Statistiques", english: "Statistics", rule: /\bstatistiques?\b/ },
-  { term: "Analyse", english: "Calculus", rule: /\banalyse\b/ },
+  { term: "Analyse", english: "Analysis (in maths: calculus)", rule: /\banalyse\b/ },
   { term: "Base de données", english: "Databases", rule: /\bbases? de donnees\b/ },
   { term: "Systèmes", english: "Systems", rule: /\bsystemes?\b/ },
   { term: "Sécurité", english: "Security", rule: /\bsecurite\b/ },
