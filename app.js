@@ -328,6 +328,7 @@ setInterval(() => {
     return;
   }
   placeNowLine();
+  if (eventsByDay.size > 0) renderNextCard();
 }, 30000);
 window.addEventListener("resize", placeNowLine);
 
@@ -520,8 +521,58 @@ document.getElementById("dismiss-install-btn").addEventListener("click", () => {
   document.getElementById("install-card").hidden = true;
 });
 
+// The "Now / Next" card at the top of Home answers "where do I go next?":
+// the class that's on (and what comes after it), or the next one. Days off
+// are skipped. Tapping it opens that day in the timetable.
+let nextCardEvent = null;
+
+/** "in 25 min", "Today · 14:00", "Tomorrow · 08:30" or "Mon, 12 Oct · 08:30". */
+function describeStart(event, now) {
+  const minutes = Math.round((event.start - now) / 60000);
+  if (minutes < 60) return `in ${Math.max(minutes, 1)} min`;
+  const time = timeFormatter.format(event.start);
+  const day = parisDateKey(event.start);
+  const today = parisDateKey(now);
+  if (day === today) return `Today · ${time}`;
+  if (day === addDays(today, 1)) return `Tomorrow · ${time}`;
+  return `${nextDayFormatter.format(event.start)} · ${time}`;
+}
+
+function renderNextCard() {
+  const now = new Date();
+  const upcoming = shownEvents
+    .filter((event) => event.end > now && classify(event.summary).kind !== "dayoff")
+    .sort((a, b) => a.start - b.start);
+  const current = upcoming.find((event) => event.start <= now);
+  const next = upcoming.find((event) => event.start > now && (!current || event.start >= current.end));
+  const shown = current || next;
+  const card = document.getElementById("next-card");
+  card.hidden = !shown;
+  nextCardEvent = shown || null;
+  if (!shown) return;
+
+  const room = (event) => (event.location ? ` · ${roomsLabel(event.location)}` : "");
+  card.style.setProperty("--card-color", classify(shown.summary).color);
+  document.getElementById("next-label").textContent = current ? "Now" : "Next";
+  document.getElementById("next-title").textContent = shown.summary || "Untitled class";
+  document.getElementById("next-detail").textContent = current
+    ? `until ${timeFormatter.format(current.end)}${room(current)}`
+    : `${describeStart(next, now)}${room(next)}`;
+  const then = document.getElementById("next-then");
+  then.hidden = !(current && next);
+  if (current && next) then.textContent = `Then ${next.summary} · ${describeStart(next, now)}`;
+}
+
+document.getElementById("next-card").addEventListener("click", () => {
+  if (!nextCardEvent) return;
+  selectedDay = parisDateKey(nextCardEvent.start);
+  renderWeek();
+  goToPage(1);
+});
+
 function renderHome(updatedAt) {
   renderProfile();
+  renderNextCard();
   renderInstallCard();
   renderChanges();
   const entries = summarizeCourses(shownEvents);
@@ -1594,7 +1645,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // Must match CACHE_NAME in sw.js (a test checks); both change with every release.
-const APP_VERSION = "amphi-v28";
+const APP_VERSION = "amphi-v29";
 const RELOAD_KEY = "zeus-reloaded-for";
 
 async function reloadIfNewVersion() {

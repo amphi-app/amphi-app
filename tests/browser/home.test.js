@@ -98,3 +98,55 @@ test("tabs, swiping, tapping a course, and settings with a way back", async () =
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test("Now / Next card: the class that's on, or the next one, kept up to date", async () => {
+  const { paris, addDays, MONDAY } = fixtures;
+  const card = async (page) => ({
+    hidden: await page.isHidden("#next-card"),
+    label: await page.textContent("#next-label"),
+    title: await page.textContent("#next-title"),
+    detail: await page.textContent("#next-detail"),
+    then: (await page.isVisible("#next-then")) ? await page.textContent("#next-then") : null,
+  });
+
+  // Wed 10:15, during Atelier Python (09:00–11:00).
+  let { page, context, errors } = await openApp(app);
+  await loadGroup(page);
+  assert.deepEqual(await card(page), {
+    hidden: false, label: "Now", title: "Atelier Python",
+    detail: "until 11:00 · Salle machine 390", then: "Then Projet Robotique · Tomorrow · 14:00",
+  });
+  await page.clock.fastForward("00:50:00"); // 11:05: the class is over
+  assert.deepEqual(await card(page), {
+    hidden: false, label: "Next", title: "Projet Robotique", detail: "Tomorrow · 14:00 · A901", then: null,
+  });
+  await page.click("#next-card");
+  await showPage(page, 1);
+  assert.equal(await page.textContent("#day-title"), "Thursday", "tapping opens that day");
+  assert.deepEqual(errors, []);
+  await context.close();
+
+  const at = async (now) => {
+    ({ page, context, errors } = await openApp(app, { now }));
+    await loadGroup(page);
+    const result = await card(page);
+    assert.deepEqual(errors, []);
+    await context.close();
+    return result;
+  };
+  const gap = await at(paris(addDays(MONDAY, 7), 10, 45)); // between 10:30 and 11:00
+  assert.equal(gap.title, "TD Réseaux");
+  assert.equal(gap.detail, "in 15 min · KB920");
+
+  const weekend = await at(paris(addDays(MONDAY, 5), 12, 0)); // Saturday
+  assert.equal(weekend.title, "Algorithmique des graphes fictifs");
+  assert.match(weekend.detail, /^Mon,? 12 Oct · 08:30 · KB910$/);
+
+  const dayOff = await at(paris(addDays(MONDAY, 30), 8, 30)); // the "Férié fictif" Wednesday
+  assert.equal(dayOff.label, "Next", "a day off isn't shown as a class");
+  assert.equal(dayOff.title, "Atelier Python");
+  assert.equal(dayOff.detail, "in 30 min · Salle machine 390");
+
+  const over = await at(paris("2027-03-01", 9, 0)); // after the last class in the file
+  assert.equal(over.hidden, true);
+});

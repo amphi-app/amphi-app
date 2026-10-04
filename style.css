@@ -430,6 +430,50 @@ button {
   border: 1px solid #a16207;
 }
 
+/* "Now / Next" card at the top of Home, in the class's own colour. */
+.next-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 28px;
+  padding: 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--card-color);
+  color: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.next-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.next-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.next-detail {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.next-then {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
 .install-card {
   margin-bottom: 28px;
   padding: 16px;

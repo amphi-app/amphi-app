@@ -37,7 +37,9 @@ responsible for maintaining it.
    and nothing in the file tells them apart, so you'd get other groups'
    classes mixed in. The app warns you if you load one.
 3. **Use it.** The app opens on **Home**: your name (tap it to enter your
-   EPITA login, e.g. `dev.vashisth`) and your courses, each with its next
+   EPITA login, e.g. `dev.vashisth`), a **Now / Next** card (the class
+   that's on and what comes after it, or your next class, with its room;
+   tap it to open that day) and your courses, each with its next
    session — tap one to jump to that day. Exams, events (forums,
    hackathons, EPI'ACK…) and days off are kept out of that list and shown
    in **Coming up** instead; ZEUS doesn't say which is which, so
